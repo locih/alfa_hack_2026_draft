@@ -1,0 +1,20 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        WITH_ML: "${WITH_ML:-0}"                # 1 — добавить LightGBM для инференса обученной PD-модели
+    image: credit-cabinet:local
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      KEY_RATE: "${KEY_RATE:-14.0}"             # ключевая ставка, % (параметр политики)
+      STEP_DELAY_SEC: "${STEP_DELAY_SEC:-1.2}"  # пауза между этапами конвейера (для наглядности демо; 0 — мгновенно)
+      DECISION_MODE: "${DECISION_MODE:-rules}"  # rules | ml_cascade (также переключается в пульте администратора)
+    volumes:
+      - data:/data                              # SQLite: данные переживают перезапуск
+      - ${MODELS_DIR:-./models}:/models:ro      # артефакты PD-модели: models/pd_current/{model.txt,calibration.json,meta.json}
+    restart: unless-stopped
+
+volumes:
+  data:

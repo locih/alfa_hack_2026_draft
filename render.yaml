@@ -1,0 +1,17 @@
+# Render Blueprint: бесплатный Docker-сервис из приватного GitHub-репозитория.
+# Подробно: docs/deploy.md
+services:
+  - type: web
+    name: credit-cabinet
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health/ready
+    autoDeploy: false            # деплой вручную: после дедлайна новые коммиты не должны менять стенд
+    envVars:
+      - key: KEY_RATE
+        value: "14.0"
+      - key: STEP_DELAY_SEC
+        value: "1.2"
+      - key: DECISION_MODE
+        value: rules

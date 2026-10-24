@@ -1,0 +1,90 @@
+# Коллекция запросов (VS Code REST Client / JetBrains HTTP Client). Пароль всех демо-учёток: demo123
+@host = http://localhost:8000
+
+### 1. Вход клиентом sever
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{"login": "sever", "password": "demo123"}
+
+###
+@token = {{login.response.body.token}}
+
+### 2. Что банк уже знает о бизнесе + предодобрение
+GET {{host}}/api/client/profile
+Authorization: Bearer {{token}}
+
+### 3. Симулятор «что если»
+POST {{host}}/api/client/quote
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"product": "working", "amount": 3000000, "term": 24}
+
+### 4. Подать заявку (идемпотентно по ключу)
+# @name created
+POST {{host}}/api/client/applications
+Authorization: Bearer {{token}}
+Idempotency-Key: demo-001
+Content-Type: application/json
+
+{"product": "working", "amount": 3000000, "term": 24, "collateral": "none",
+ "consents": {"pd": true, "bureau": true, "fns": true}}
+
+###
+@appId = {{created.response.body.id}}
+
+### 5. Статус заявки (поллинг)
+GET {{host}}/api/client/applications/{{appId}}
+Authorization: Bearer {{token}}
+
+### 6. Принять предложение
+POST {{host}}/api/client/applications/{{appId}}/accept
+Authorization: Bearer {{token}}
+
+### 7. Подписать (код берётся из поля sign_code в ответе п.5)
+POST {{host}}/api/client/applications/{{appId}}/sign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"code": "000000"}
+
+### 8. Вход аналитиком
+# @name bank
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{"login": "analyst", "password": "demo123"}
+
+###
+@btoken = {{bank.response.body.token}}
+
+### 9. Очередь и статистика банка
+GET {{host}}/api/bank/applications
+Authorization: Bearer {{btoken}}
+
+###
+GET {{host}}/api/bank/stats
+Authorization: Bearer {{btoken}}
+
+### 10. Карточка заявки: источники, скоринг по факторам, журнал
+GET {{host}}/api/bank/applications/{{appId}}
+Authorization: Bearer {{btoken}}
+
+### 11. Решение аналитика на ручном разборе (approve | request_docs | decline)
+POST {{host}}/api/bank/applications/{{appId}}/decision
+Authorization: Bearer {{btoken}}
+Content-Type: application/json
+
+{"action": "request_docs", "comment": "Приложите выписку из другого банка за 12 месяцев"}
+
+### 12. Пульт стенда (admin): ключевая ставка и режим БКИ
+POST {{host}}/api/admin/settings
+Authorization: Bearer {{btoken}}
+Content-Type: application/json
+
+{"key_rate": 14.0, "bureau_mode": "ok", "step_delay": 1.2}
+
+### Служебные
+GET {{host}}/api/health/ready

@@ -1,0 +1,109 @@
+# Кредитная политика демо-стенда. ВСЕ числа — допущения команды (см. docs/assumptions.md),
+# публичных порогов банков РФ не существует. Для боевого применения нужна калибровка на данных банка.
+version: "2026-10-23.1"
+key_rate_default: 14.0        # % годовых; переопределяется переменной KEY_RATE и в админ-пульте
+
+pricing:
+  opex: {auto: 1.2, manual: 1.8}      # п.п.
+  margin: 1.0                          # п.п.
+  cap_over_key: 10.0                   # потолок ставки: K + 10 п.п.
+  preferential_spread: 3.0             # льготная программа: K + 3 п.п.
+  grades:                              # PD, % — для цены; dscr — целевой коэффициент покрытия
+    A: {min_score: 80, pd: 1.5,  cap_charge: 0.5, dscr: 1.25, debt_share: 0.30}
+    B: {min_score: 65, pd: 3.0,  cap_charge: 0.8, dscr: 1.30, debt_share: 0.25}
+    C: {min_score: 50, pd: 6.0,  cap_charge: 1.2, dscr: 1.40, debt_share: 0.20}
+    D: {min_score: 35, pd: 11.0, cap_charge: 1.8, dscr: 1.60, debt_share: 0.15}
+    E: {min_score: 0,  pd: 20.0, cap_charge: 3.0, dscr: 1.60, debt_share: 0.10}
+  lgd: {none: 45, guarantor: 40, equipment: 35, realty: 25}   # %, без обеспечения — по Базелю F-IRB
+  term_add: [[12, 0.0], [36, 0.5], [600, 1.0]]                # [срок до, надбавка п.п.]
+
+# Допущение: чистый денежный поток = поступления × маржа отрасли
+industry_margin: {it: 0.20, production: 0.12, catering: 0.08, construction: 0.08, transport: 0.09, trade: 0.05}
+# Баллы фактора 1.3 «риск отрасли» и подписи
+industry:
+  it:           {points: 5, title: "ИТ и услуги"}
+  production:   {points: 3, title: "Производство"}
+  transport:    {points: 3, title: "Транспорт"}
+  construction: {points: 3, title: "Строительство"}
+  trade:        {points: 0, title: "Торговля"}
+  catering:     {points: 0, title: "Общепит"}
+
+manual_zone: 3                         # ±баллов около границ 35 и 50 — принудительно ручной разбор
+second_approver_over: 10000000         # сумма, выше которой нужен второй утверждающий (поле, не процесс)
+
+products:
+  working:
+    title: "Оборотный кредит"
+    tagline: "Закупки, разовые расходы, пополнение оборотных средств"
+    kind: annuity
+    min_amount: 100000
+    max_amount: 5000000
+    min_term: 6
+    max_term: 36
+    product_add: 0.0
+    min_business_months: 6
+    auto_limits: {A: 5000000, B: 3000000, C: 1500000}
+    collateral: [none, guarantor, realty]
+    fee: "Выдача 0 %, досрочное погашение без штрафа"
+  overdraft:
+    title: "Овердрафт"
+    tagline: "Покрыть кассовый разрыв: деньги на счёте в пределах лимита"
+    kind: limit
+    min_amount: 100000
+    max_amount: 3000000
+    min_term: 12
+    max_term: 12
+    product_add: 1.0
+    min_tenure_months: 6
+    auto_limits: {A: 3000000, B: 3000000, C: 1500000}
+    limit_share_of_receipts: 0.5
+    limit_fee_pct: 1.5
+    collateral: [none, guarantor]
+    fee: "Плата за установление лимита 1,5 %; транш до 60 дней"
+  development:
+    title: "Кредит на развитие"
+    tagline: "Оборудование, транспорт, ремонт, расширение"
+    kind: annuity
+    min_amount: 1000000
+    max_amount: 15000000
+    min_term: 12
+    max_term: 60
+    product_add: 0.5
+    min_business_months: 12
+    auto_limits: {A: 10000000, B: 10000000, C: 5000000}
+    collateral: [equipment, realty]
+    fee: "Залог приобретаемого актива, выдача 0 %, досрочное погашение без штрафа"
+  preferential:
+    title: "Льготный оборотный (господдержка)"
+    tagline: "Ставка «ключевая + 3 п.п.» первый год для МСП приоритетных отраслей"
+    kind: annuity
+    min_amount: 500000
+    max_amount: 5000000
+    min_term: 12
+    max_term: 36
+    product_add: 0.0
+    min_business_months: 6
+    auto_limits: {A: 5000000, B: 3000000, C: 1500000}
+    collateral: [none, guarantor, realty]
+    needs_msp_priority: true
+    fee: "Выдача 0 %; льготная ставка действует 12 месяцев, далее — рыночная"
+
+# --- ML-слой: PD-модель и каскад по продуктам (включается режимом decision_mode=ml_cascade; по умолчанию правила) ---
+ml:
+  decision_mode: rules                # rules — скоркарта и политика; ml_cascade — PD-модель и каскад (переключается в пульте / DECISION_MODE)
+  # PD (в %) → грейд для DSCR и цены: границы совпадают с PD скоркарты на 80/65/50/35 баллах
+  grade_pd_cutoffs: {A: 2.05, B: 4.1, C: 7.9, D: 14.3}
+  # Пороги по продукту, PD в %: ≤ approve — автоодобрение; ≥ decline — продукт пропускается; между — серая зона.
+  # Допущения: калибруются по таблице зон из metrics.json (доля заявок и реальный bad rate в каждой зоне), см. docs/ml.md
+  cutoffs:
+    development:  {approve: 3.0, decline: 9.0}
+    working:      {approve: 5.0, decline: 12.0}
+    preferential: {approve: 6.0, decline: 12.0}
+    overdraft:    {approve: 7.0, decline: 14.3}
+  # Каскад: что пробуем, если продукт пропущен или в серой зоне (от более рискового к более безопасному)
+  ladder:
+    development:  [working, overdraft]
+    working:      [overdraft]
+    preferential: [working, overdraft]
+    overdraft:    []
+  grey_zone: downsell_then_refer      # refer — сразу живому верификатору; downsell_then_refer — сначала безопасные продукты каскада
