@@ -98,7 +98,7 @@ function render(view) {
       if (top < vh) { el.classList.add("cascade"); el.style.setProperty("--i", Math.min(i, 6)); } else { el.classList.remove("cascade"); el.style.removeProperty("--i"); }
     });
     r.classList.add("enter");
-    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 1500);
+    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 2400);
     animateCounts(r);
   }
 }
@@ -389,7 +389,7 @@ function showIssued(a) {
   const onKey = (e) => { if (e.key === "Escape") close(); };
   el.addEventListener("click", (e) => { if (e.target.closest("[data-act=issued-close]") || e.target === el) close(); });
   document.addEventListener("keydown", onKey);
-  setTimeout(close, 9000);
+  setTimeout(close, 12000);
 }
 let lastSig = "";
 async function viewApp(id) {
@@ -748,6 +748,6 @@ document.addEventListener("change", (e) => {
   if (el.dataset.bindC && draft) { draft.consents[el.dataset.bindC] = el.checked; const b = $('[data-act="submit-app"]'); if (b) b.disabled = !(draft.consents.pd && draft.consents.bureau && draft.consents.fns); }
   if (el.id === "act") syncDecisionForm();
 });
-window.addEventListener("hashchange", () => { stopPoll(); root().classList.add("leaving"); clearTimeout(render._l); render._l = setTimeout(() => root().classList.remove("leaving"), 700); route(); });
+window.addEventListener("hashchange", () => { stopPoll(); root().classList.add("leaving"); clearTimeout(render._l); render._l = setTimeout(() => root().classList.remove("leaving"), 1000); route(); });
 route();
 })();
