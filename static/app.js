@@ -98,7 +98,7 @@ function render(view) {
       if (top < vh) { el.classList.add("cascade"); el.style.setProperty("--i", Math.min(i, 6)); } else { el.classList.remove("cascade"); el.style.removeProperty("--i"); }
     });
     r.classList.add("enter");
-    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 2400);
+    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 3600);
     animateCounts(r);
   }
 }
@@ -748,6 +748,6 @@ document.addEventListener("change", (e) => {
   if (el.dataset.bindC && draft) { draft.consents[el.dataset.bindC] = el.checked; const b = $('[data-act="submit-app"]'); if (b) b.disabled = !(draft.consents.pd && draft.consents.bureau && draft.consents.fns); }
   if (el.id === "act") syncDecisionForm();
 });
-window.addEventListener("hashchange", () => { stopPoll(); root().classList.add("leaving"); clearTimeout(render._l); render._l = setTimeout(() => root().classList.remove("leaving"), 1000); route(); });
+window.addEventListener("hashchange", () => { stopPoll(); root().classList.add("leaving"); clearTimeout(render._l); render._l = setTimeout(() => root().classList.remove("leaving"), 1500); route(); });
 route();
 })();
