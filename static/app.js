@@ -9,7 +9,7 @@ const raw = (s) => new Raw(s);
 const part = (v) => (v instanceof Raw ? v.s : Array.isArray(v) ? v.map(part).join("") : esc(v));
 const h = (s, ...v) => new Raw(s.reduce((a, x, i) => a + x + (i < v.length ? part(v[i]) : ""), ""));
 
-const rub = (n) => (n == null ? "—" : Math.round(n).toLocaleString("ru-RU") + " ₽");
+const rub = (n) => (n == null ? "—" : Math.round(n).toLocaleString("ru-RU") + "\u00a0₽");
 const pct = (n) => (n == null ? "—" : Number(n).toFixed(1).replace(".", ",") + " %");
 const dt = (s) => new Date(s).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 const dateOnly = (s) => new Date(s).toLocaleDateString("ru-RU");

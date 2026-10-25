@@ -119,7 +119,8 @@ details > summary { cursor: pointer; }
 .prod:hover { border-color: #b9c2cc; } .prod.sel { border-color: var(--accent); background: var(--accent-soft); }
 .prod[disabled] { opacity: .55; cursor: not-allowed; }
 .prod h3 { margin-bottom: 4px; }
-.big { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+.big { font-size: 28px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.g4 .big { font-size: clamp(20px, 1.75vw, 26px); }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; }
 .kv dt { color: var(--muted); } .kv dd { margin: 0; text-align: right; font-weight: 600; }
 .cmp { width: 100%; border-collapse: collapse; }
