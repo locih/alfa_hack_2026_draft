@@ -597,25 +597,40 @@ function refreshQuote() {
 
 // ---------- клиент: заявка ----------
 // полноэкранный момент выдачи: один раз на заявку в этой вкладке
-function showIssued(a) {
-  const key = "issued-shown-" + a.id;
-  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch { /* приватный режим */ }
+// полноэкранная «галочка»: выдача кредита, внесённый платёж, полное погашение
+function showCelebrate({ label, title, sum, sub, button, auto = 12000 }) {
   document.getElementById("issued-overlay")?.remove();
-  const el = document.createElement("div"); el.id = "issued-overlay"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Кредит выдан");
+  const el = document.createElement("div"); el.id = "issued-overlay"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", label);
   el.innerHTML = h`<div class="iss-glow"></div>
     <div class="iss-body">
       <svg class="iss-check" viewBox="0 0 120 120" aria-hidden="true"><circle class="iss-ring" cx="60" cy="60" r="54"/><path class="iss-tick" d="M34 62 L52 80 L88 42"/></svg>
-      <h1>${a.product === "overdraft" ? "Лимит открыт!" : "Кредит выдан!"}</h1>
-      <p class="iss-sum">${a.product === "overdraft" ? h`Овердрафт ${rub(a.contract?.amount ?? a.offer?.amount ?? a.amount)} доступен на расчётном счёте — деньги списываются по мере использования` : h`${rub(a.contract?.amount ?? a.offer?.amount ?? a.amount)} уже на вашем расчётном счёте`}</p>
-      <p class="iss-sub">${a.contract?.first_payment ? h`Первый платёж ${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}` : "График платежей и договор — в карточке кредита"}</p>
-      <button class="btn primary" data-act="issued-close">Смотреть график платежей</button>
+      <h1>${title}</h1>
+      <p class="iss-sum">${sum}</p>
+      <p class="iss-sub">${sub}</p>
+      <button class="btn primary" data-act="issued-close">${button}</button>
     </div>`.s;
   document.body.appendChild(el); document.body.classList.add("iss-open");
-  const close = () => { el.classList.add("out"); document.body.classList.remove("iss-open"); setTimeout(() => el.remove(), 500); document.removeEventListener("keydown", onKey); };
+  const close = () => { if (!el.isConnected) return; el.classList.add("out"); document.body.classList.remove("iss-open"); setTimeout(() => el.remove(), 500); document.removeEventListener("keydown", onKey); };
   const onKey = (e) => { if (e.key === "Escape") close(); };
   el.addEventListener("click", (e) => { if (e.target.closest("[data-act=issued-close]") || e.target === el) close(); });
   document.addEventListener("keydown", onKey);
-  setTimeout(close, 12000);
+  clearTimeout(showCelebrate._t); showCelebrate._t = setTimeout(close, auto);      // один таймер на все оверлеи: прошлый не закроет новый
+}
+function showIssued(a) {
+  const key = "issued-shown-" + a.id;
+  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch { /* приватный режим */ }
+  const amt = rub(a.contract?.amount ?? a.offer?.amount ?? a.amount), od = a.product === "overdraft";
+  showCelebrate({ label: od ? "Лимит открыт" : "Кредит выдан", title: od ? "Лимит открыт!" : "Кредит выдан!",
+    sum: od ? h`Овердрафт ${amt} доступен на расчётном счёте — деньги списываются по мере использования` : h`${amt} уже на вашем расчётном счёте`,
+    sub: a.contract?.first_payment ? h`Первый платёж ${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}` : "График платежей и договор — в карточке кредита",
+    button: "Смотреть график платежей" });
+}
+function showPaid(r, paid) {
+  const l = r.loan;
+  if (!l || l.repaid) return showCelebrate({ label: "Кредит погашен", title: "Кредит погашен полностью!", sum: h`Последний платёж ${rub(paid)} внесён — обязательств по договору больше нет`,
+    sub: l ? h`Всего выплачено ${rub(l.total_paid)}, из них проценты ${rub(l.interest_paid)} · договор ${l.contract}` : "", button: "Отлично", auto: 9000 });
+  showCelebrate({ label: "Платёж внесён", title: "Платёж внесён!", sum: h`${rub(paid)} списано с расчётного счёта · платёж №${l.paid_count} из ${l.total_count}`,
+    sub: h`Следующий платёж ${rub(l.next_payment.amount)} · ${dateOnly(l.next_payment.date)} · остаток долга ${rub(l.outstanding)} · на счёте ${rub(r.balance)}`, button: "Продолжить", auto: 7000 });
 }
 let lastSig = "";
 async function viewApp(id) {
@@ -945,7 +960,9 @@ const act = {
   },
   "pay": async (el) => {
     el.disabled = true;
-    try { await api(`/client/applications/${el.dataset.app}/pay`, { method: "POST" }); toast("Платёж оплачен"); lastSig = ""; await route(); } catch (e) { toast(e.message, true); el.disabled = false; }
+    const before = (window.__client?.prof.loans || []).find((x) => x.app_id === el.dataset.app) || window.__app?.loan;
+    const paid = before?.next_payment?.amount;
+    try { const r = await api(`/client/applications/${el.dataset.app}/pay`, { method: "POST" }); lastSig = ""; await route(); showPaid(r, paid ?? (r.loan ? r.loan.total_paid / Math.max(1, r.loan.paid_count) : 0)); } catch (e) { toast(e.message, true); el.disabled = false; }
   },
   "topup": async () => {
     try { await api("/client/account/topup", { body: { amount: +$("#topup").value } }); toast("Счёт пополнен (демо)"); lastSig = ""; await route(); } catch (e) { toast(e.message, true); }
