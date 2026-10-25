@@ -540,7 +540,7 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 :root[data-theme="dark"] { --violet-soft: #241c4a; --violet-ink: #b9a9ff; }
 
 /* иллюстрации продуктов (fal.ai, FLUX 1.1 pro — собственные генерации команды) */
-.pimg { width: 132px; height: 132px; object-fit: contain; display: block; margin: -6px auto 6px; filter: drop-shadow(0 14px 18px rgba(0,0,0,.16)); transition: transform 0.675s var(--ease); }
+.pimg { width: 152px; height: 152px; object-fit: contain; display: block; margin: -6px auto 6px; filter: drop-shadow(0 14px 18px rgba(0,0,0,.16)); transition: transform 0.675s var(--ease); }
 .card.flat:hover .pimg { transform: translateY(-4px) scale(1.04); }
 .prod { position: relative; padding-right: 70px !important; } .prod .pimg.sm { position: absolute; right: 10px; top: 12px; width: 56px; height: 56px; margin: 0; filter: drop-shadow(0 8px 10px rgba(0,0,0,.18)); } .prod.sel .pimg.sm { transform: scale(1.08); }
 .fcard .fico.img { background: transparent; width: 56px; height: 56px; object-fit: contain; filter: drop-shadow(0 8px 10px rgba(0,0,0,.18)); }
