@@ -1,5 +1,7 @@
 """HTTP API (FastAPI) и раздача статического UI. OpenAPI: /docs, /openapi.json."""
 import secrets
+import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -17,6 +19,7 @@ from .service import ServiceError
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    service.resume_pending()                    # продолжить заявки, прерванные перезапуском
     yield
 
 
@@ -66,17 +69,45 @@ class LoginIn(BaseModel):
 
 @app.get("/api/auth/demo-users", tags=["auth"], summary="Демо-учётки для входа (только для стенда)")
 def demo_users():
+    if not config.demo_mode():
+        raise HTTPException(404, "Не найдено")
     with db.read() as c:
         rows = c.execute("SELECT login, role, name, hint FROM users ORDER BY rowid").fetchall()
     return {"password": db.DEMO_PASSWORD, "users": [dict(r) for r in rows]}
 
 
+LOGIN_MAX_FAILS, LOGIN_WINDOW_S = 8, 300
+_LOGIN_FAILS: dict[str, list[float]] = {}                  # логин → моменты неудачных попыток (в памяти процесса)
+_login_lock = threading.Lock()
+
+
+def _now() -> float:
+    return time.monotonic()
+
+
+def _throttled(login: str) -> bool:
+    with _login_lock:
+        recent = [t for t in _LOGIN_FAILS.get(login, []) if _now() - t < LOGIN_WINDOW_S]
+        _LOGIN_FAILS[login] = recent
+        return len(recent) >= LOGIN_MAX_FAILS
+
+
+def _register_fail(login: str) -> None:
+    with _login_lock:
+        _LOGIN_FAILS.setdefault(login, []).append(_now())
+
+
 @app.post("/api/auth/login", tags=["auth"])
 def login(body: LoginIn):
+    name = body.login.strip().lower()[:64]
+    if _throttled(name):                                    # до PBKDF2: перебор не должен ещё и нагружать процессор
+        raise HTTPException(429, "Слишком много неудачных попыток. Подождите несколько минут.")
     with db.tx() as c:
         u = c.execute("SELECT * FROM users WHERE login=?", (body.login.strip(),)).fetchone()
         if not u or not secrets.compare_digest(u["pw_hash"], db.hash_pw(body.password, u["salt"])):
+            _register_fail(name)
             raise HTTPException(401, "Неверный логин или пароль")
+        _LOGIN_FAILS.pop(name, None)
         token = secrets.token_urlsafe(32)
         c.execute("INSERT INTO sessions(token,login,expires) VALUES(?,?,?)",
                   (token, u["login"], (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(timespec="seconds")))
@@ -117,6 +148,7 @@ def products(u: dict = Depends(current_user)):
     cl = mocks.get_client(u["client_id"]) if u["client_id"] else None
     for k, p in policy()["products"].items():
         item = {"id": k, **{x: p[x] for x in ("title", "tagline", "kind", "min_amount", "max_amount", "min_term", "max_term", "collateral", "fee")}}
+        item["collateral_options"] = service.collateral_options(u["client_id"], p["collateral"])
         item["eligible"] = not (p.get("needs_msp_priority") and cl and not (cl["msp_registry"] and cl["priority_industry"]))
         out.append(item)
     return {"key_rate": st["key_rate"], "policy_version": policy()["version"], "products": out}
@@ -132,18 +164,18 @@ class Consents(BaseModel):
 
 class ApplicationIn(BaseModel):
     product: str
-    amount: int = Field(gt=0)
-    term: int = Field(gt=0)
-    purpose: str | None = None
-    purpose_text: str | None = None
-    collateral: str = "none"
+    amount: int = Field(gt=0, le=1_000_000_000)
+    term: int = Field(gt=0, le=600)
+    purpose: str | None = Field(default=None, max_length=40)
+    purpose_text: str | None = Field(default=None, max_length=500)
+    collateral: str = Field(default="none", max_length=20)
     consents: Consents
 
 
 class QuoteIn(BaseModel):
-    product: str
-    amount: int = Field(gt=0)
-    term: int = Field(gt=0)
+    product: str = Field(max_length=30)
+    amount: int = Field(gt=0, le=1_000_000_000)
+    term: int = Field(gt=0, le=600)
     collateral: str = "none"
 
 
@@ -151,8 +183,12 @@ class SignIn(BaseModel):
     code: str
 
 
+class TopUpIn(BaseModel):
+    amount: int = Field(ge=1000, le=5_000_000)
+
+
 class DocsIn(BaseModel):
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=300)
 
 
 @app.get("/api/client/profile", tags=["client"], summary="Что банк уже знает о бизнесе + предодобрение")
@@ -164,15 +200,35 @@ def profile(u: dict = Depends(client_only)):
         "tenure_months": cl["tenure_months"], "receipts": cl["receipts"], "avg_receipts": round(p["avg"]), "dynamics": round(p["dynamics"], 3),
         "existing_payments": cl["existing_payments"], "key_rate": st["key_rate"],
         "msp": cl["msp_registry"] and cl["priority_industry"],
+        "account": service.account_view(u["client_id"]),
+        "loans": [x for x in (service.loan_summary(db.row_to_app(r)) for r in _disbursed_rows(u["client_id"])) if x],
         "preapproval": [{k: v for k, v in x.items() if k != "grade"} for x in pol.preapproval(cl, enr, st["key_rate"])],   # внутренний грейд клиенту не показываем
     }
 
 
+def _disbursed_rows(client_id: str):
+    with db.read() as c:
+        return c.execute("SELECT * FROM applications WHERE client_id=? AND status='DISBURSED' ORDER BY seq DESC", (client_id,)).fetchall()
+
+
+@app.get("/api/client/account", tags=["client"], summary="Расчётный счёт (демо): номер и баланс")
+def account(u: dict = Depends(client_only)):
+    return service.account_view(u["client_id"])
+
+
+@app.post("/api/client/account/topup", tags=["client"], summary="Пополнить счёт (демо, реальных операций нет)")
+def topup(body: TopUpIn, u: dict = Depends(client_only)):
+    return service.account_topup(u, body.amount)
+
+
+@app.post("/api/client/applications/{app_id}/pay", tags=["client"], summary="Оплатить ближайший платёж по графику (моделируется)")
+def pay(app_id: str, u: dict = Depends(client_only)):
+    return service.pay_next(u, app_id)
+
+
 @app.post("/api/client/quote", tags=["client"], summary="Симулятор «что если»")
 def quote(body: QuoteIn, u: dict = Depends(client_only)):
-    prod = policy()["products"].get(body.product)
-    if not prod:
-        raise HTTPException(422, "Неизвестный продукт")
+    service.validate_request(u, body.product, body.amount, body.term, body.collateral)
     cl, enr, st = service.client_enrichment(u)
     p = scoring.build_profile(cl, enr)
     grade = scoring.score(p)["grade"]
@@ -234,8 +290,8 @@ class DecisionIn(BaseModel):
     action: str = Field(description="approve | request_docs | decline")
     amount: int | None = None
     term: int | None = None
-    reasons: list[str] = []
-    comment: str | None = None
+    reasons: list[str] = Field(default=[], max_length=20)
+    comment: str | None = Field(default=None, max_length=1000)
 
 
 @app.get("/api/bank/applications", tags=["bank"])

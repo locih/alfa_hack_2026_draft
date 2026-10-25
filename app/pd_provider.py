@@ -3,6 +3,7 @@
 Приложение работает и без ML-зависимостей (lightgbm/numpy): модель подгружается только при наличии артефактов
 в MODEL_DIR (по умолчанию models/pd_current) и совпадении набора признаков с кодом.
 """
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
 
@@ -20,6 +21,12 @@ class PDResult:
     version: str
     contributions: list[tuple[str, float]] | None = None
     features: dict = field(default_factory=dict)
+    lazy_contributions: Callable[[], list[tuple[str, float]]] | None = None   # SHAP считается только когда вклады реально нужны
+
+    def get_contributions(self) -> list[tuple[str, float]] | None:
+        if self.contributions is None and self.lazy_contributions:
+            self.contributions = self.lazy_contributions()
+        return self.contributions
 
 
 class PDProvider:
@@ -39,7 +46,8 @@ class PDProvider:
         feats = F.build(profile, product=product, kind=pc["products"][product]["kind"], amount=amount, term=term,
                         collateral=collateral, legal_form=legal_form, ncf_margin=pc["industry_margin"][profile["industry"]])
         if self.model:
-            return PDResult(self.model.predict_pd(feats), "ml", self.model.version, self.model.explain(feats, top=8), feats)
+            return PDResult(self.model.predict_pd(feats), "ml", self.model.version, None, feats,
+                            lazy_contributions=lambda: self.model.explain(feats, top=8))
         return PDResult(scoring.pd_fraction(scoring.score(profile)["total"]), "scorecard", "scorecard-" + pc["version"], None, feats)
 
 

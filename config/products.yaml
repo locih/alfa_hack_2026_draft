@@ -16,6 +16,8 @@ pricing:
     E: {min_score: 0,  pd: 20.0, cap_charge: 3.0, dscr: 1.60, debt_share: 0.10}
   lgd: {none: 45, guarantor: 40, equipment: 35, realty: 25}   # %, без обеспечения — по Базелю F-IRB
   term_add: [[12, 0.0], [36, 0.5], [600, 1.0]]                # [срок до, надбавка п.п.]
+  # Явная скидка за обеспечение, п.п. (сверх снижения потерь через LGD): без обеспечения ставка выше
+  collateral_discount: {none: 0.0, guarantor: 0.5, equipment: 1.0, realty: 2.0}
 
 # Допущение: чистый денежный поток = поступления × маржа отрасли
 industry_margin: {it: 0.20, production: 0.12, catering: 0.08, construction: 0.08, transport: 0.09, trade: 0.05}

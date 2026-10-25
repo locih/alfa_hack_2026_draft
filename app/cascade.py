@@ -13,7 +13,7 @@ from ml.predict import pd_to_score
 from . import policy as pol
 from . import pd_provider, scoring
 from .config import policy
-from .reasons import FACTOR_REASON, reason
+from .reasons import reason
 from ml.features import FEATURE_REASON
 
 
@@ -42,7 +42,6 @@ def _candidate(c: str, app: dict, p: dict, client: dict, provider, key_rate: flo
     elig = pol.eligibility(c, p)
     if elig:
         t["note"] = elig[0]["text"]
-        t["elig_reason"] = elig[0]
         return t
     amount0 = min(app["amount"], prod["max_amount"])
     if amount0 < prod["min_amount"]:
@@ -94,7 +93,7 @@ def _public(t: dict) -> dict:
 
 def _ml_hurts(result, limit: int = 3) -> list[dict]:
     out, seen = [], set()
-    for feat, v in (result.contributions or []):
+    for feat, v in (result.get_contributions() or []):
         code = FEATURE_REASON.get(feat)
         if v > 0.02 and code and code not in seen:
             seen.add(code)
@@ -149,14 +148,14 @@ def evaluate_cascade(app: dict, client: dict, enrichment: dict, key_rate: float,
         "source": res.source if res else provider.status()["source"], "version": res.version if res else provider.status()["version"],
         "grey_zone_policy": mlc["grey_zone"], "trace": trace,
         "cutoffs": {k: mlc["cutoffs"][k] for k in candidates}, "scorecard_pd": round(scoring.pd_fraction(sc["total"]) * 100, 2),
-        "contributions": [{"feature": f, "value": round(v, 3)} for f, v in (res.contributions or [])][:6] if res else [],
+        "contributions": [{"feature": f, "value": round(v, 3)} for f, v in (res.get_contributions() or [])][:6] if res else [],
     }
     if ref and ref["pd"] is not None:
         dec.update(pd=ref["pd"], grade=ref["grade"], score=round(pd_to_score(ref["pd"] / 100)))
     dec["afford"] = ref["af"] if ref else None
 
     helped = pol.helped_reasons({"factors": sc["factors"]})
-    hurts = _ml_hurts(res) if res and res.contributions else pol._hurts(sc)
+    hurts = _ml_hurts(res) if res and res.get_contributions() else pol._hurts(sc)
 
     def pick(t):
         rec = dict(t["rec"])

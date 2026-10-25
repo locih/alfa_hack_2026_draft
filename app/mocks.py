@@ -3,6 +3,9 @@
 Все данные синтетические; ИНН с нереальным кодом региона «00». Каждый источник возвращает
 {status: OK|UNAVAILABLE, fetched_at, data}. Недоступность источника не роняет заявку — она уходит на ручной разбор.
 """
+import random
+import time
+
 from . import db
 
 # Шаблон помесячных отклонений: нулевая сумма в каждой половине года → тренд задаётся параметром, а не шумом
@@ -23,7 +26,7 @@ def _receipts(mean: float, growth: float, noise_cv: float) -> list[int]:
 
 CLIENTS = {
     "C-A": {
-        "id": "C-A", "name": "ООО «Север-Тех»", "legal_form": "ООО", "inn": "0012345601", "ogrn": "1000000000011",
+        "id": "C-A", "start_balance": 1500000, "name": "ООО «Север-Тех»", "legal_form": "ООО", "inn": "0012345601", "ogrn": "1000000000011",
         "okved": "62.01 Разработка программного обеспечения", "industry": "it",
         "director": "Орлов Игорь Сергеевич", "address": "г. Северодвинск, ул. Синтетическая, 1",
         "registered": "2022-06-14", "age_months": 52, "tenure_months": 30,
@@ -36,7 +39,7 @@ CLIENTS = {
         "msp_registry": True, "priority_industry": True,
     },
     "C-B": {
-        "id": "C-B", "name": "ООО «Лесной хлеб»", "legal_form": "ООО", "inn": "0012345602", "ogrn": "1000000000022",
+        "id": "C-B", "start_balance": 500000, "name": "ООО «Лесной хлеб»", "legal_form": "ООО", "inn": "0012345602", "ogrn": "1000000000022",
         "okved": "10.71 Производство хлеба и мучных кондитерских изделий", "industry": "production",
         "director": "Лесникова Марина Петровна", "address": "г. Вологда, ул. Демонстрационная, 7",
         "registered": "2025-02-03", "age_months": 20, "tenure_months": 10,
@@ -49,7 +52,7 @@ CLIENTS = {
         "msp_registry": True, "priority_industry": True,
     },
     "C-C": {
-        "id": "C-C", "name": "ИП Громов А. С.", "legal_form": "ИП", "inn": "001234560003", "ogrn": "300000000000033",
+        "id": "C-C", "start_balance": 80000, "name": "ИП Громов А. С.", "legal_form": "ИП", "inn": "001234560003", "ogrn": "300000000000033",
         "okved": "56.10 Рестораны и услуги по доставке продуктов питания", "industry": "catering",
         "director": "Громов Алексей Сергеевич", "address": "г. Тверь, ул. Тестовая, 12",
         "registered": "2025-11-20", "age_months": 11, "tenure_months": 3,
@@ -63,7 +66,7 @@ CLIENTS = {
         "msp_registry": True, "priority_industry": False,
     },
     "C-D": {
-        "id": "C-D", "name": "ООО «СтройРесурс»", "legal_form": "ООО", "inn": "0012345604", "ogrn": "1000000000044",
+        "id": "C-D", "start_balance": 200000, "name": "ООО «СтройРесурс»", "legal_form": "ООО", "inn": "0012345604", "ogrn": "1000000000044",
         "okved": "41.20 Строительство жилых и нежилых зданий", "industry": "construction",
         "director": "Строев Виктор Андреевич", "address": "г. Калуга, ул. Образцовая, 20",
         "registered": "2023-04-10", "age_months": 36, "tenure_months": 24,
@@ -113,7 +116,7 @@ def bank_data(client: dict, statement_uploaded: bool) -> dict:
             "account": client["account"]}
 
 
-def collect(client: dict, statement_uploaded: bool, bureau_mode: str, retries: int = 2) -> tuple[dict, list[str]]:
+def collect(client: dict, statement_uploaded: bool, bureau_mode: str, retries: int = 2, backoff: float = 0.0) -> tuple[dict, list[str]]:
     """Собирает данные из всех источников. Возвращает (enrichment, строки журнала для банка)."""
     log: list[str] = []
     out = {"egrul": {"status": "OK", "fetched_at": db.now(), "data": egrul(client)},
@@ -130,6 +133,8 @@ def collect(client: dict, statement_uploaded: bool, bureau_mode: str, retries: i
             break
         except Unavailable as e:
             log.append(f"{e}; попытка {attempt} из {retries + 1}")
+            if backoff > 0 and attempt <= retries:               # экспоненциальная пауза с джиттером между повторами
+                time.sleep(backoff * 2 ** (attempt - 1) * (0.5 + random.random()))
     else:
         out["bureau"] = {"status": "UNAVAILABLE", "fetched_at": db.now(), "data": None}
     return out, log

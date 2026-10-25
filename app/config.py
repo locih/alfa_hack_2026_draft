@@ -28,5 +28,10 @@ def env_decision_mode() -> str:
     return os.environ.get("DECISION_MODE", policy()["ml"]["decision_mode"])
 
 
+def demo_mode() -> bool:
+    """DEMO_MODE=0 скрывает публичный список демо-учёток (для не-демо развёртываний). По умолчанию включён — для проверки жюри."""
+    return os.environ.get("DEMO_MODE", "1") != "0"
+
+
 def env_step_delay() -> float:
     return float(os.environ.get("STEP_DELAY_SEC", "1.2"))

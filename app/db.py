@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS events (
   ts TEXT NOT NULL, actor TEXT NOT NULL, kind TEXT NOT NULL, vis TEXT NOT NULL DEFAULT 'both',
   from_status TEXT, to_status TEXT, message TEXT NOT NULL, data TEXT);
 CREATE INDEX IF NOT EXISTS ix_events_app ON events(app_id, id);
+CREATE TABLE IF NOT EXISTS accounts (client_id TEXT PRIMARY KEY, balance INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS idempotency (key TEXT NOT NULL, login TEXT NOT NULL, app_id TEXT NOT NULL, PRIMARY KEY (key, login));
 """
 
@@ -56,7 +57,8 @@ def tx():
         yield c
         c.execute("COMMIT")
     except BaseException:
-        c.execute("ROLLBACK")
+        if c.in_transaction:                                    # BEGIN мог не выполниться (БД занята) — не маскируем исходную ошибку
+            c.execute("ROLLBACK")
         raise
     finally:
         c.close()
@@ -123,7 +125,7 @@ DEMO_USERS = [
 def reset_data() -> None:
     """Сброс демо-данных без потери учётных записей и сессий."""
     with tx() as c:
-        for t in ("idempotency", "events", "applications", "settings"):
+        for t in ("idempotency", "events", "applications", "accounts", "settings"):
             c.execute(f"DELETE FROM {t}")
         set_setting(c, "key_rate", config.env_key_rate())
         set_setting(c, "bureau_mode", "ok")
@@ -134,7 +136,7 @@ def reset_data() -> None:
 def init_db(reset: bool = False) -> None:
     with tx() as c:
         if reset:
-            for t in ("idempotency", "events", "applications", "sessions", "users", "settings"):
+            for t in ("idempotency", "events", "applications", "accounts", "sessions", "users", "settings"):
                 c.execute(f"DROP TABLE IF EXISTS {t}")
         for stmt in SCHEMA.strip().split(";"):
             if stmt.strip():

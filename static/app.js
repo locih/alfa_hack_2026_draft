@@ -35,7 +35,9 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* приватный режим */ } },
 };
-let session = { token: store.get("token"), user: JSON.parse(store.get("user") || "null") };
+function readUser() { try { return JSON.parse(store.get("user") || "null"); } catch { return null; } }   // испорченный localStorage не должен ломать сайт
+let session = { token: store.get("token"), user: readUser() };
+if (!session.user) session.token = null;
 let poll = null;
 
 async function api(path, opts = {}) {
@@ -94,6 +96,29 @@ function render(view) {
   }
 }
 
+// Глоссарий: термин подчёркнут, при наведении или фокусе (клавиатура, касание) показывается пояснение
+const GLOSS = {
+  "ставка": "Процент годовых, по которому банк начисляет плату за пользование деньгами. Чем выше ставка, тем больше переплата.",
+  "ключевая ставка": "Главная ставка Банка России. От неё банки отталкиваются, когда назначают ставки по кредитам.",
+  "аннуитет": "Равные ежемесячные платежи весь срок. В начале в платеже больше процентов, к концу — больше основного долга.",
+  "платёж": "Сколько нужно вносить каждый месяц: часть идёт на проценты, часть — на возврат взятой суммы.",
+  "переплата": "Сколько вы заплатите сверх суммы кредита: это проценты за весь срок.",
+  "основной долг": "Часть платежа, которая уменьшает сумму, взятую в долг.",
+  "проценты": "Плата банку за пользование деньгами; считается от остатка долга.",
+  "остаток долга": "Сколько ещё нужно вернуть банку (без процентов, которые начислятся позже).",
+  "график платежей": "Расписание: когда и сколько платить каждый месяц, сколько из платежа идёт на проценты и на основной долг.",
+  "обеспечение": "То, что снижает риск банка: залог или поручительство. С обеспечением ставка ниже, без него — выше.",
+  "залог": "Имущество (оборудование, транспорт, недвижимость), которое остаётся в залоге у банка до погашения. Если платить не получится, банк может его продать.",
+  "поручительство": "Другой человек обязуется вернуть кредит, если вы не сможете. Для ООО это обычно собственники бизнеса, для ИП — третье лицо.",
+  "простая электронная подпись": "Подтверждение кодом, которое заменяет подпись от руки. В демо код показан на экране; в реальной системе он приходил бы в приложение банка.",
+  "договор": "Документ с условиями кредита: сумма, срок, ставка, график платежей и права сторон.",
+  "овердрафт": "Лимит на расчётном счёте: можно уйти «в минус» в пределах лимита и быстро вернуть, чтобы закрыть кассовый разрыв.",
+  "лимит": "Максимальная сумма, которой вы можете пользоваться. Платите проценты только за использованную часть.",
+  "льготная программа": "Государственная поддержка МСП: ставка ниже рыночной (ключевая + 3 п.п.) в первый год. Доступна не всем отраслям.",
+  "досрочное погашение": "Можно вернуть кредит раньше срока без штрафа: проценты платятся только за время пользования.",
+};
+const T = (key, text) => raw(`<span class="term" tabindex="0" role="note" data-tip="${esc(GLOSS[key] || "")}">${esc(text || key)}</span>`);
+
 const PRODUCT_ICON = { working: "▤", overdraft: "↻", development: "⚙", preferential: "★" };
 
 function chip(code, title) {
@@ -111,19 +136,21 @@ function topbar(extra = "") {
   return h`<header class="topbar"><div class="in">
     <a class="brand" href="#/${bank ? "bank" : "client"}"><i></i><span>${bank ? "Рабочее место банка" : "Кредитный кабинет"} <small>· МСБ</small></span></a>
     ${raw(extra)}<span class="spacer"></span>
-    <div class="who"><b>${u.name}</b><span class="muted small">${bank ? (u.role === "admin" ? "администратор стенда" : "кредитный аналитик") : "Демо-данные"}</span></div>
+    <a class="who" href="#/${bank ? "bank" : "client"}" title="${bank ? "Перейти в очередь заявок" : "Перейти в личный кабинет"}"><b>${u.name}</b><span class="muted small">${bank ? (u.role === "admin" ? "администратор стенда" : "кредитный аналитик") : "Личный кабинет"} →</span></a>
     <button class="btn sm" data-act="logout">Выйти</button></div></header>`.s;
 }
 
 // ---------- вход ----------
 async function viewLogin() {
   document.title = "Умный кредитный кабинет";
-  const d = await api("/auth/demo-users", { noAuthRedirect: true });
+  stopPoll();
+  const d = await api("/auth/demo-users", { noAuthRedirect: true }).catch(() => null);      // null — демо-режим выключен (DEMO_MODE=0)
+  const users = d ? d.users : [];
   const av = (n) => n.replace(/[«»"]/g, "").split(" ").filter((w) => w.length > 1).slice(0, 2).map((w) => w[0]).join("");
   const arrow = h`<svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 5.5 20 12l-6.5 6.5-1.4-1.4 4.1-4.1H4v-2h12.2l-4.1-4.1 1.4-1.4z"/></svg>`;
   const acc = (u) => h`<button class="acc ${u.role === "client" ? "" : "bank"}" data-act="demo-login" data-login="${u.login}">
       <span class="av">${av(u.name)}</span><span><b>${u.name}</b><small>${u.hint}</small></span>${arrow}</button>`;
-  const clients = d.users.filter((u) => u.role === "client"), bank = d.users.filter((u) => u.role !== "client");
+  const clients = users.filter((u) => u.role === "client"), bank = users.filter((u) => u.role !== "client");
   render(h`<div class="login">
     <div class="login-hero">
       <div class="login-mark"><i></i><span>Кредитный кабинет <small>· малый бизнес</small></span></div>
@@ -133,14 +160,13 @@ async function viewLogin() {
       <div class="shapes" aria-hidden="true"><span class="s1"></span><span class="s2"></span><span class="s3"></span></div>
     </div>
     <div class="roles">
-      <h2>Клиенты</h2>${clients.map(acc)}
-      <h2>Банк</h2>${bank.map(acc)}
-      <details><summary>Войти по логину и паролю</summary>
+      ${d ? h`<h2>Клиенты</h2>${clients.map(acc)}<h2>Банк</h2>${bank.map(acc)}` : h`<div class="notice plate mb">Демо-режим выключен. Войдите под своей учётной записью.</div>`}
+      <details ${d ? "" : "open"}><summary>Войти по логину и паролю</summary>
         <form data-act="login-form" class="mt">
           <div class="field"><label for="lg">Логин</label><input id="lg" type="text" autocomplete="username"></div>
           <div class="field"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="current-password"></div>
           <button class="btn primary" type="submit">Войти</button>
-          <p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p></form></details>
+          ${d ? h`<p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p>` : ""}</form></details>
       <p class="foot">Подписание и выдача имитируются, реальных операций нет. Учебный прототип команды, не сервис банка.</p>
     </div></div>`);
 }
@@ -165,6 +191,26 @@ function turnoverChart(receipts) {
     })}</svg>`;
 }
 
+function loanBlock(l, acc) {
+  const np = l.next_payment;
+  return h`<div class="loan"><div class="keyline mb">
+      <div><span class="muted small">${T("остаток долга", "Остаток долга")}</span><div class="big num">${rub(l.outstanding)}</div><span class="muted small">из ${rub(l.amount)}</span></div>
+      <div><span class="muted small">${l.repaid ? "Статус" : "Ближайший платёж"}</span><div class="big num">${l.repaid ? "Погашен" : rub(np.amount)}</div><span class="muted small">${l.repaid ? "все платежи внесены" : "до " + dateOnly(np.date) + " · №" + np.n + " из " + l.total_count}</span></div>
+      <div><span class="muted small">Погашено</span><div class="big">${Math.round(l.progress * 100)} %</div><span class="muted small">платежей: ${l.paid_count} из ${l.total_count}</span></div></div>
+    <div class="progress" role="progressbar" aria-valuenow="${Math.round(l.progress * 100)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${Math.max(l.progress * 100, 1)}%"></span></div>
+    <div class="row wrapx between small mt"><span class="muted">Выплачено ${T("проценты", "процентов")}: ${rub(l.interest_paid)} из ${rub(l.total_interest)} · всего внесено: ${rub(l.total_paid)}</span>
+      ${l.repaid ? "" : h`<button class="btn good" data-act="pay" data-app="${l.app_id}">Оплатить платёж №${np.n} — ${rub(np.amount)}</button>`}</div>
+    <p class="hint">Платёж списывается с расчётного счёта (операция моделируется, реальных списаний нет). Остаток на счёте: <b class="num">${rub(acc.balance)}</b>.</p></div>`;
+}
+
+function accountCard(acc) {
+  return h`<div class="card flat"><div class="row between wrapx"><div><h3>Расчётный счёт</h3><div class="muted small num">${acc.number}</div></div>
+      <div class="right"><span class="muted small">Баланс (демо)</span><div class="big num">${rub(acc.balance)}</div></div></div>
+    <div class="row wrapx mt"><input id="topup" type="number" min="1000" max="5000000" step="1000" value="100000" aria-label="Сумма пополнения, ₽" style="max-width:180px">
+      <button class="btn" data-act="topup">Пополнить счёт (демо)</button></div>
+    <p class="hint">Демо-пополнение: реальных операций нет. С этого счёта оплачиваются платежи по кредиту.</p></div>`;
+}
+
 async function viewClient() {
   const [prof, apps, cat] = await Promise.all([api("/client/profile"), api("/client/applications"), api("/products")]);
   const prod = Object.fromEntries(cat.products.map((p) => [p.id, p]));
@@ -180,6 +226,9 @@ async function viewClient() {
         <div class="row between wrapx"><div><span class="muted small">Активная заявка ${active.id} · ${active.product_title} · ${rub(active.amount)} на ${active.term} мес.</span>
         <h2 style="margin-top:4px">${active.status.title}</h2><p class="muted" style="margin:0">${active.status.text}</p></div>
         <span class="btn primary">${active.status.turn === "client" ? "Нужно ваше действие →" : "Открыть →"}</span></div></a>` : ""}
+
+    ${prof.loans.length ? h`<h2>Мои кредиты</h2><div class="grid g2 mb">${prof.loans.map((l) => h`<div class="card"><div class="row between wrapx"><div><b>${l.product_title}</b><br><span class="muted small">Договор ${l.contract} · ${pct(l.rate)}</span></div>
+          <a class="small" href="#/client/app/${l.app_id}">График и детали →</a></div><div class="mt">${loanBlock(l, prof.account)}</div></div>`)}${accountCard(prof.account)}</div>` : ""}
 
     <h2>Предодобрено по данным, которые банк уже знает</h2>
     <p class="muted small">Предварительная оценка по вашим оборотам — не гарантия: итоговые условия назовёт банк после проверки заявки.</p>
@@ -248,8 +297,9 @@ function paintNew() {
         ${limit ? h`<div class="field"><label>Срок договора</label><div class="muted" style="padding:10px 0">12 месяцев, транш до 60 дней</div></div>` :
           h`<div><div class="field"><label for="trm">Срок, мес.</label><input id="trm" type="number" min="${p.min_term}" max="${p.max_term}" value="${d.term}" data-bind="term" data-fresh="1"></div>
         <input type="range" aria-label="Срок" min="${p.min_term}" max="${p.max_term}" step="1" value="${d.term}" data-bind="term" data-range="trm"></div>`}</div>
-      <div class="field mt"><label for="col">Обеспечение</label><select id="col" data-bind="collateral">${p.collateral.map((c) =>
-        h`<option value="${c}" ${d.collateral === c ? "selected" : ""}>${{ none: "Без обеспечения", guarantor: "Поручительство владельца", equipment: "Залог приобретаемого оборудования или транспорта", realty: "Залог недвижимости" }[c]}</option>`)}</select></div>
+      <div class="field mt"><label for="col">Обеспечение</label><select id="col" data-bind="collateral">${p.collateral_options.map((c) =>
+        h`<option value="${c.id}" ${d.collateral === c.id ? "selected" : ""}>${c.label}</option>`)}</select>
+        <div class="hint">${p.collateral_options.find((c) => c.id === d.collateral)?.hint} ${T("обеспечение", "Что такое обеспечение?")}</div></div>
       <div id="quote" class="card flat mt"><span class="muted">Считаем…</span></div>
       <div class="row mt2"><button class="btn" data-act="step" data-to="1">← Назад</button><span class="spacer"></span><button class="btn primary" data-act="step" data-to="3">Далее →</button></div>`;
     setTimeout(refreshQuote, 0);
@@ -257,7 +307,7 @@ function paintNew() {
     const c = d.prof.company;
     body = h`<h2>Проверьте и отправьте</h2>
       <div class="grid g2"><div><h3>Заявка</h3><dl class="kv"><dt>Продукт</dt><dd>${p.title}</dd><dt>${p.kind === "limit" ? "Лимит" : "Сумма"}</dt><dd class="num">${rub(d.amount)}</dd>
-        <dt>Срок</dt><dd>${p.kind === "limit" ? "12 мес." : d.term + " мес."}</dd><dt>Обеспечение</dt><dd>${{ none: "нет", guarantor: "поручительство", equipment: "залог актива", realty: "недвижимость" }[d.collateral]}</dd></dl></div>
+        <dt>Срок</dt><dd>${p.kind === "limit" ? "12 мес." : d.term + " мес."}</dd><dt>Обеспечение</dt><dd>${p.collateral_options.find((c) => c.id === d.collateral)?.label}</dd></dl></div>
         <div><h3>О компании <span class="chip ok">из реестров и данных банка</span></h3><dl class="kv"><dt>Название</dt><dd>${c.name}</dd><dt>ИНН</dt><dd>${c.inn}</dd><dt>Руководитель</dt><dd>${c.director}</dd><dt>Счёт</dt><dd class="num">${c.account}</dd></dl>
         <p class="hint">Данные подтянуты автоматически — вводить повторно не нужно.</p></div></div>
       <hr><h3>Согласия</h3>
@@ -285,10 +335,10 @@ function refreshQuote() {
       const fit = q.fits ? h`<span class="chip ok">✓ укладывается в платёжеспособность</span>` : h`<span class="chip warn">! выше комфортного платежа — банк может предложить другие условия</span>`;
       const prev = refreshQuote.prev || {}; refreshQuote.prev = q;
       $("#quote").innerHTML = h`<div class="grid g3">
-        <div><div class="muted small">Ставка</div><div class="big">${pct(q.rate)}</div><div class="muted small">зависит от срока и оценки</div></div>
+        <div><div class="muted small">${T("ставка", "Ставка")}</div><div class="big">${pct(q.rate)}</div><div class="muted small">${q.collateral_effect > 0 ? "обеспечение снизило ставку на " + String(q.collateral_effect).replace(".", ",") + " п.п." : "без обеспечения ставка выше"}</div></div>
         ${p.kind === "limit" ? h`<div><div class="muted small">Плата за лимит</div><div class="big num" data-count="${q.fee}" data-from="${prev.fee || 0}">${rub(q.fee)}</div><div class="muted small">проценты за 30 дней при полном использовании ≈ ${rub(q.interest_30d)}</div></div>`
-          : h`<div><div class="muted small">Платёж в месяц</div><div class="big num" data-count="${q.payment}" data-from="${prev.payment || 0}">${rub(q.payment)}</div><div class="muted small">аннуитет</div></div>
-        <div><div class="muted small">Переплата</div><div class="big num" data-count="${q.overpayment}" data-from="${prev.overpayment || 0}">${rub(q.overpayment)}</div><div class="muted small">всего вернёте ${rub(q.total)}</div></div>`}</div>
+          : h`<div><div class="muted small">Платёж в месяц</div><div class="big num" data-count="${q.payment}" data-from="${prev.payment || 0}">${rub(q.payment)}</div><div class="muted small">${T("аннуитет", "аннуитет")}</div></div>
+        <div><div class="muted small">${T("переплата", "Переплата")}</div><div class="big num" data-count="${q.overpayment}" data-from="${prev.overpayment || 0}">${rub(q.overpayment)}</div><div class="muted small">всего вернёте ${rub(q.total)}</div></div>`}</div>
       <div class="row wrapx mt">${fit}<span class="muted small">При таком сроке комфортная сумма — до ${rub(q.max_amount)}</span></div>
       <p class="hint">Предварительный расчёт, не оферта. Итоговые условия назовёт банк после проверки.</p>`.s;
       animateCounts($("#quote"));
@@ -300,7 +350,8 @@ function refreshQuote() {
 let lastSig = "";
 async function viewApp(id) {
   const a = await api("/client/applications/" + id);
-  const sig = a.status.code + a.events.length + a.updated;
+  if (a.loan) a.account = await api("/client/account");
+  const sig = a.id + a.status.code + a.events.length + a.updated + (a.account ? a.account.balance : "");
   if (sig === lastSig && $("#appview")) return;
   lastSig = sig;
   paintApp(a);
@@ -316,17 +367,18 @@ function offerCard(a) {
       <span class="chip ${o.type === "AS_REQUESTED" ? "ok" : "warn"}">${down ? "Другой продукт" : o.type === "AS_REQUESTED" ? "Одобрено" : "Другие условия"}</span></div>
     ${down ? h`<div class="notice warn mb">Запрошенный продукт на таких условиях не подходит. Мы подобрали «${o.product_title}» — он лучше соответствует вашей платёжеспособности и уровню риска. Можно принять предложение или подать новую заявку с другими параметрами.</div>` : ""}
     ${o.type === "COUNTER" ? h`<div class="notice warn mb">Мы подобрали условия, при которых платёж будет для бизнеса комфортным. ${o.term !== a.term ? "Срок увеличен — ставка для более длинного срока немного выше." : ""}</div>` : ""}
-    <div class="keyline mb"><div><span class="muted small">${limit ? "Лимит" : "Платёж в месяц"}</span><div class="big num">${limit ? rub(o.amount) : rub(o.payment)}</div></div>
-      <div><span class="muted small">Ставка</span><div class="big">${pct(o.rate)}</div></div>
+    <div class="keyline mb"><div><span class="muted small">${limit ? T("лимит", "Лимит") : T("платёж", "Платёж в месяц")}</span><div class="big num">${limit ? rub(o.amount) : rub(o.payment)}</div></div>
+      <div><span class="muted small">${T("ставка", "Ставка")}</span><div class="big">${pct(o.rate)}</div></div>
       <div><span class="muted small">Срок</span><div class="big">${limit ? "12 мес." : o.term + " мес."}</div></div></div>
     <details ${o.type === "AS_REQUESTED" ? "" : "open"}><summary class="small muted" style="cursor:pointer">Сравнить с запрошенными условиями</summary>
     <table class="cmp"><thead><tr><th></th><th>Как просили</th><th>Как предлагаем</th></tr></thead><tbody>
       ${down ? h`<tr><td>Продукт</td><td>${a.product_title}</td><td class="chg">${o.product_title}</td></tr>` : ""}
       <tr><td>${limit ? "Лимит" : "Сумма"}</td><td class="num">${rub(a.amount)}</td><td class="num ${chg(a.amount, o.amount)}">${rub(o.amount)}</td></tr>
       <tr><td>Срок</td><td>${a.term} мес.</td><td class="${chg(a.term, o.term)}">${limit ? "12 мес." : o.term + " мес."}</td></tr>
-      <tr><td>Ставка</td><td class="muted">—</td><td><b>${pct(o.rate)}</b></td></tr>
+      <tr><td>${T("ставка", "Ставка")}</td><td class="muted">—</td><td><b>${pct(o.rate)}</b></td></tr>
+      <tr><td>${T("обеспечение", "Обеспечение")}</td><td>${a.collateral_label_requested || "—"}</td><td>${a.collateral_label}</td></tr>
       ${limit ? h`<tr><td>Плата за лимит</td><td></td><td class="num">${rub(o.fee)}</td></tr>` :
-        h`<tr><td>Платёж в месяц</td><td class="muted">—</td><td class="num"><b>${rub(o.payment)}</b></td></tr><tr><td>Переплата</td><td></td><td class="num">${rub(o.overpayment)}</td></tr>`}
+        h`<tr><td>Платёж в месяц</td><td class="muted">—</td><td class="num"><b>${rub(o.payment)}</b></td></tr><tr><td>${T("переплата", "Переплата")}</td><td></td><td class="num">${rub(o.overpayment)}</td></tr>`}
     </tbody></table></details>
     <p class="hint">${o.fee_text}. Предложение действует до ${dateOnly(o.valid_until)}. Ключевая ставка на момент расчёта: ${pct(o.key_rate_snapshot)}.</p>
     ${a.status.code === "OFFER_READY" ? h`<div class="row wrapx mt"><button class="btn good" data-act="accept">Принять предложение</button>
@@ -342,10 +394,12 @@ function reasonsCard(a, title) {
 
 function scheduleTable(a) {
   if (!a.schedule) return "";
-  return h`<details class="mt"><summary><b>График платежей</b> <span class="muted small">· платежей: ${a.schedule.length}</span></summary>
-    <div class="scroll mt"><table class="t"><thead><tr><th>№</th><th>Дата</th><th class="right">Платёж</th><th class="right">Проценты</th><th class="right">Основной долг</th><th class="right">Остаток</th></tr></thead><tbody>
-    ${a.schedule.map((r) => h`<tr><td>${r.n}</td><td>${dateOnly(r.date)}</td><td class="right num">${rub(r.payment)}</td><td class="right num">${rub(r.interest)}</td><td class="right num">${rub(r.principal)}</td><td class="right num">${rub(r.balance)}</td></tr>`)}
-    </tbody></table></div><button class="btn sm mt" data-act="csv">Скачать CSV</button></details>`;
+  const rows = a.schedule, sum = (k) => rows.reduce((t, r) => t + r[k], 0), disb = a.status.code === "DISBURSED";
+  return h`<details class="mt" ${disb ? "open" : ""}><summary><b>${T("график платежей", "График платежей")}</b> <span class="muted small">· платежей: ${rows.length}${disb ? " · оплачено: " + rows.filter((r) => r.paid).length : ""}</span></summary>
+    <div class="scroll mt"><table class="t sched"><thead><tr><th>№</th><th>Дата платежа</th><th class="right">${T("основной долг", "Основной долг")}, ₽</th><th class="right">${T("проценты", "Проценты")}, ₽</th><th class="right">Всего платёж, ₽</th><th class="right">${T("остаток долга", "Остаток долга")}, ₽</th>${disb ? h`<th class="center">Оплата</th>` : ""}</tr></thead><tbody>
+    ${rows.map((r) => h`<tr class="${r.paid ? "paid" : ""}"><td>${r.n}</td><td>${dateOnly(r.date)}</td><td class="right num">${rub(r.principal)}</td><td class="right num">${rub(r.interest)}</td><td class="right num"><b>${rub(r.payment)}</b></td><td class="right num">${rub(r.balance)}</td>${disb ? h`<td class="center">${r.paid ? raw('<span class="tick" title="Оплачен">✓</span>') : ""}</td>` : ""}</tr>`)}
+    </tbody><tfoot><tr><td colspan="2"><b>Итого</b></td><td class="right num"><b>${rub(sum("principal"))}</b></td><td class="right num"><b>${rub(sum("interest"))}</b></td><td class="right num"><b>${rub(sum("payment"))}</b></td><td></td>${disb ? h`<td></td>` : ""}</tr></tfoot></table></div>
+    <button class="btn sm mt" data-act="csv">Скачать CSV</button></details>`;
 }
 
 function paintApp(a) {
@@ -371,18 +425,22 @@ function paintApp(a) {
   }
   if (code === "AWAITING_SIGNATURE") {
     ctx = h`${ctx}<div class="card mt"><h2>Подписание</h2>
-      <div class="grid g3 mb">${["Кредитный договор", "Согласие на обработку данных", "График платежей"].map((x) => h`<div class="card flat small">📄 ${x}<br><span class="chip">готов</span></div>`)}</div>
-      <p>Подтвердите подписание кодом. Это имитация простой электронной подписи: в реальной системе код приходил бы в приложение банка.</p>
+      <div class="grid g3 mb">${[["договор", "Кредитный договор"], ["", "Согласие на обработку данных"], ["график платежей", "График платежей"]].map(([k, x]) => h`<div class="card flat small">📄 ${k ? T(k, x) : x}<br><span class="chip">готов</span></div>`)}</div>
+      <div class="notice mb"><b>Вы подписываете:</b> ${a.offer.payment == null ? h`${T("лимит", "лимит")} ${rub(a.offer.amount)}` : h`кредит ${rub(a.offer.amount)} на ${a.offer.term} мес.`}, ${T("ставка", "ставка")} ${pct(a.offer.rate)}${a.offer.payment ? h`, ${T("платёж", "платёж")} ${rub(a.offer.payment)} в месяц, ${T("переплата", "переплата")} ${rub(a.offer.overpayment)}` : ""}; ${T("обеспечение", "обеспечение")}: ${a.collateral_label.toLowerCase()}. ${T("досрочное погашение", "Досрочное погашение")} без штрафа. Наведите курсор на подчёркнутое слово, чтобы увидеть пояснение.</div>
+      <p>Подтвердите подписание кодом — это ${T("простая электронная подпись", "простая электронная подпись")} (имитация): в реальной системе код приходил бы в приложение банка.</p>
       <div class="row wrapx"><div>Код (демо): <span class="code">${a.sign_code}</span></div></div>
       <div class="field mt" style="max-width:260px"><label for="code">Введите код</label><input id="code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
       <button class="btn primary" data-act="sign">Подписать договор</button></div>`;
   }
   if (good) {
-    ctx = h`<div class="card mt" style="border-color:var(--ok)"><h2>🎉 Кредит выдан</h2><dl class="kv">
+    ctx = h`<div class="card mt" style="border-color:var(--ok)"><h2>${a.loan?.repaid ? "✅ Кредит погашен" : "🎉 Кредит выдан"}</h2><dl class="kv">
       <dt>Договор</dt><dd>${a.contract.number} от ${dateOnly(a.contract.date)}</dd><dt>Сумма</dt><dd class="num">${rub(a.contract.amount)}</dd>
       <dt>Зачислено на счёт</dt><dd class="num">${a.contract.account}</dd><dt>Ставка</dt><dd>${pct(a.contract.rate)}</dd>
-      ${a.contract.first_payment ? h`<dt>Ближайший платёж</dt><dd class="num">${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}</dd>` : ""}</dl>
-      <p class="hint">${a.contract.note}</p>${scheduleTable(a)}</div>${reasonsCard(a, "Почему такое решение")}`;
+      ${a.contract.first_payment ? h`<dt>Первый платёж</dt><dd class="num">${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}</dd>` : ""}</dl>
+      <p class="hint">${a.contract.note}</p></div>
+      ${a.loan ? h`<div class="card mt"><h2>Мой кредит</h2>${loanBlock(a.loan, a.account)}
+        <div class="row wrapx mt"><input id="topup" type="number" min="1000" max="5000000" step="1000" value="100000" aria-label="Сумма пополнения, ₽" style="max-width:180px"><button class="btn" data-act="topup">Пополнить счёт (демо)</button></div></div>` : ""}
+      <div class="card mt">${scheduleTable(a)}</div>${reasonsCard(a, "Почему такое решение")}`;
   } else if (code === "OFFER_READY" || code === "AWAITING_SIGNATURE") {
     ctx = h`${ctx}${scheduleTable(a)}`;
   }
@@ -498,7 +556,8 @@ async function viewBankApp(id, silent) {
         <dt>Макс. платёж P_max = ЧДП / DSCR − текущие платежи</dt><dd class="num"><b>${rub(af.p_max)}</b></dd>
         ${af.amax_requested_term != null ? h`<dt>Макс. сумма на запрошенный срок</dt><dd class="num">${rub(af.amax_requested_term)}</dd>` : ""}
         ${af.limit_max != null ? h`<dt>Макс. лимит (50 % поступлений)</dt><dd class="num">${rub(af.limit_max)}</dd>` : ""}</dl>
-        ${rec ? h`<hr><h3>Рекомендация системы</h3><p>${rec.type === "AS_REQUESTED" ? "Как запрошено" : "Встречное предложение"}: <b>${rub(rec.amount)}</b> на <b>${rec.term} мес.</b> под <b>${pct(rec.rate)}</b>${rec.payment ? h`, платёж ${rub(rec.payment)}` : ""}.</p>` : h`<p class="muted">Система не нашла условий, при которых заявка проходит.</p>`}</div>` : ""}
+        ${rec ? h`<hr><h3>Рекомендация системы</h3><p>${{ AS_REQUESTED: "Как запрошено", COUNTER: "Встречное предложение", DOWNSELL: "Другой продукт" }[rec.type] || "Предложение"}: <b>${rec.product_title || d.product_title}</b>, <b>${rub(rec.amount)}</b> на <b>${rec.term} мес.</b> под <b>${pct(rec.rate)}</b>${rec.payment ? h`, платёж ${rub(rec.payment)}` : ""}.</p>
+          ${rec.type === "DOWNSELL" ? h`<div class="notice warn">Запрошен «${d.product_title}», рекомендован другой продукт: одобрение оформит предложение по продукту «${rec.product_title}».</div>` : ""}` : h`<p class="muted">Система не нашла условий, при которых заявка проходит.</p>`}</div>` : ""}
       <div class="card mt"><h2>Источники данных</h2>${src.length ? src.map(([k, v]) => h`<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${names[k]}</span>
         <span><span class="chip ${v.status === "OK" ? "ok" : "bad"}">${v.status === "OK" ? "OK" : "недоступно"}</span> <span class="muted small">${dt(v.fetched_at)}</span></span></div>`)
         : h`<p class="muted">Данные ещё не запрашивались.</p>`}<p class="hint">Все источники — моки на синтетических данных; недоступность источника переводит заявку на ручной разбор, а не в отказ.</p></div>
@@ -510,7 +569,7 @@ async function viewBankApp(id, silent) {
         <div class="field"><label for="act">Действие</label><select id="act"><option value="approve">Одобрить / изменить условия</option><option value="request_docs">Запросить документы</option><option value="decline">Отказать</option></select></div>
         <div id="f-approve"><div class="grid g2"><div class="field"><label for="d_amt">Сумма, ₽</label><input id="d_amt" type="number" step="50000" value="${rec ? rec.amount : req.amount}"></div>
           <div class="field"><label for="d_trm">Срок, мес.</label><input id="d_trm" type="number" value="${rec ? rec.term : req.term}"></div></div>
-          <p class="hint">Ставку система считает по формуле для ручного разбора; платёж выше P_max требует комментария.</p></div>
+          <p class="hint">Ставку система считает по формуле для ручного разбора; платёж выше P_max требует комментария. ${rec && rec.product && rec.product !== req.product ? h`Предложение оформится по продукту «${rec.product_title}».` : ""}</p></div>
         <div id="f-decline" class="hide"><label>Причины (видит клиент)</label>${reasonsOpts.map(([k, t]) => h`<label class="check"><input type="checkbox" class="rs" value="${k}"> <span><b>${k}</b> ${t}</span></label>`)}</div>
         <div class="field"><label for="d_cm">Комментарий</label><textarea id="d_cm" placeholder="Обязателен при запросе документов"></textarea></div>
         <button class="btn primary" data-act="decide">Принять решение</button></div>` : ""}
@@ -544,7 +603,6 @@ async function route(silent) {
     if (parts[0] === "bank") {
       if (role === "client") return (location.hash = "#/client");
       if (parts[1] === "app") return await viewBankApp(parts[2], silent);
-      if (!silent || !$(".tiles")) return await viewBank();
       return await viewBank();
     }
     location.hash = role === "client" ? "#/client" : "#/bank";
@@ -577,9 +635,17 @@ const act = {
   "docs": () => call("/documents", "Выписка подключена, проверяем повторно", { note: $("#note")?.value }),
   "sign": () => call("/sign", "Договор подписан", { code: $("#code")?.value || "" }),
   "csv": () => {
-    const a = window.__app; const rows = ["№;Дата;Платёж;Проценты;Основной долг;Остаток", ...a.schedule.map((r) => [r.n, r.date, r.payment, r.interest, r.principal, r.balance].join(";"))];
+    const a = window.__app; const sm = (k) => a.schedule.reduce((t, r) => t + r[k], 0);
+    const rows = ["№;Дата платежа;Основной долг;Проценты;Всего платёж;Остаток долга;Оплачен", ...a.schedule.map((r) => [r.n, r.date, r.principal, r.interest, r.payment, r.balance, r.paid ? "да" : ""].join(";")), ["Итого", "", sm("principal"), sm("interest"), sm("payment"), "", ""].join(";")];
     const url = URL.createObjectURL(new Blob(["﻿" + rows.join("\n")], { type: "text/csv" }));
     Object.assign(document.createElement("a"), { href: url, download: `grafik-${a.id}.csv` }).click(); URL.revokeObjectURL(url);
+  },
+  "pay": async (el) => {
+    el.disabled = true;
+    try { await api(`/client/applications/${el.dataset.app}/pay`, { method: "POST" }); toast("Платёж оплачен"); lastSig = ""; await route(); } catch (e) { toast(e.message, true); el.disabled = false; }
+  },
+  "topup": async () => {
+    try { await api("/client/account/topup", { body: { amount: +$("#topup").value } }); toast("Счёт пополнен (демо)"); lastSig = ""; await route(); } catch (e) { toast(e.message, true); }
   },
   "filter": (el) => { bankFilter = el.dataset.k; viewBank(); },
   "open-bank": (el) => { location.hash = "#/bank/app/" + el.dataset.id; },
@@ -597,6 +663,17 @@ async function call(path, okMsg, body) {
   const id = window.__app.id;
   try { await api(`/client/applications/${id}${path}`, { method: "POST", body: body || undefined }); toast(okMsg); lastSig = ""; await viewApp(id); } catch (e) { toast(e.message, true); }
 }
+
+// подсказки терминов не должны выходить за края окна: сдвигаем по горизонтали при наведении или фокусе
+function fitTip(e) {
+  const el = e.target.closest && e.target.closest(".term");
+  if (!el) return;
+  const w = Math.min(280, innerWidth * 0.8), r = el.getBoundingClientRect(), ideal = r.left + r.width / 2 - w / 2;
+  const clamped = Math.max(8, Math.min(ideal, innerWidth - w - 8));
+  el.style.setProperty("--shift", Math.round(clamped - ideal) + "px");
+}
+document.addEventListener("mouseover", fitTip);
+document.addEventListener("focusin", fitTip);
 
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");

@@ -8,22 +8,15 @@
 import argparse
 import csv
 import json
-import math
 import os
 from pathlib import Path
 
 from . import features as F
+from .scale import pd_to_score  # noqa: F401  (реэкспорт: используется как ml.predict.pd_to_score)
 
 
 class ModelUnavailable(Exception):
     pass
-
-
-def pd_to_score(pd: float) -> float:
-    """Шкала PDO как у скоркарты: 60 баллов = PD 5 %, +15 баллов удваивают шансы. Возвращает 0..100."""
-    pd = min(max(pd, 1e-6), 1 - 1e-6)
-    s = 60 + 15 * math.log2(((1 - pd) / pd) / 19)
-    return max(0.0, min(100.0, s))
 
 
 class PDModel:
@@ -42,11 +35,11 @@ class PDModel:
                 raise ModelUnavailable(f"набор признаков модели ({meta['schema_hash']}) не совпадает с кодом ({F.schema_hash()}): переобучите модель")
             import lightgbm as lgb
             booster = lgb.Booster(model_file=str(p / "model.txt"))
+            return cls(booster, calibration, meta, str(p))              # конструктор тоже внутри try: битый meta.json — это «модель недоступна»
         except ModelUnavailable:
             raise
         except Exception as e:                                   # нет файлов, нет libomp/lightgbm, битый JSON
             raise ModelUnavailable(f"{type(e).__name__}: {e}") from e
-        return cls(booster, calibration, meta, str(p))
 
     # --- калибровка ---
     def _calibrate(self, raw):

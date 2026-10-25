@@ -1,4 +1,5 @@
 """Оркестрация заявки: конвейер (проверка → решение → выдача), действия клиента и аналитика, представления."""
+import logging
 import secrets
 import threading
 import time
@@ -9,6 +10,9 @@ from . import policy as pol
 from .config import policy
 from .reasons import REASONS, reason
 from .states import CLIENT_HINTS, CLIENT_VIEW, STEPS, TERMINAL, TRANSIENT, TRANSITIONS
+
+
+logger = logging.getLogger("credit-cabinet")
 
 
 class ServiceError(Exception):
@@ -23,6 +27,16 @@ def load(c, app_id: str) -> dict:
     app = db.row_to_app(c.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone())
     if not app:
         raise ServiceError(404, "Заявка не найдена")
+    return normalize(app)
+
+
+def normalize(app: dict) -> dict:
+    """Договоры, выданные до появления платежей, не имеют payments/repaid/schedule_start — достраиваем значения по умолчанию."""
+    ct = app.get("contract")
+    if ct:
+        ct.setdefault("payments", [])
+        ct.setdefault("repaid", False)
+        ct.setdefault("schedule_start", ct.get("date"))
     return app
 
 
@@ -75,25 +89,52 @@ def run_pipeline(app_id: str) -> None:
             step(app_id)
         except ServiceError:
             return
+        except Exception as e:                                      # сбой шага не должен оставлять заявку «зависшей» без следа
+            logger.exception("Сбой шага %s заявки %s", step.__name__, app_id)
+            _degrade(app_id, step.__name__, e)
+            return
 
 
-def _sleep():
-    d = _delay()
-    if d > 0:
-        time.sleep(d)
+def _degrade(app_id: str, step_name: str, exc: Exception) -> None:
+    """Деградация вместо зависания: запись в журнал банка и передача аналитику (где переход допустим)."""
+    msg = f"Сбой автоматической обработки ({step_name}): {type(exc).__name__}: {exc}"[:300]
+    try:
+        with db.tx() as c:
+            app = load(c, app_id)
+            log(c, app_id, "system", "error", msg, "bank")
+            if app["status"] in ("VERIFICATION", "DECISIONING"):
+                dec = dict(app["decision"] or {}, outcome="manual", manual_reasons=[msg], reasons=[reason("R18")])
+                move(c, app, "MANUAL_REVIEW", "system", "Заявку рассматривает специалист банка", "client", decision=dec)
+    except ServiceError:
+        pass
+
+
+def resume_pending() -> int:
+    """После перезапуска (в т.ч. «засыпания» бесплатного хостинга) продолжаем заявки, которые остановились между автоэтапами."""
+    with db.read() as c:
+        ids = [r["id"] for r in c.execute("SELECT id FROM applications WHERE status IN ('VERIFICATION','DECISIONING','DISBURSING')")]
+    for app_id in ids:
+        kick(app_id)
+    return len(ids)
+
+
+def _sleep(delay: float) -> None:
+    if delay > 0:
+        time.sleep(delay)
 
 
 # ---------- шаги конвейера ----------
 
 def step_verify(app_id: str) -> None:
-    _sleep()
     st = db.runtime_settings()
+    _sleep(st["step_delay"])
     with db.read() as c:
         app = load(c, app_id)
     if app["status"] != "VERIFICATION":
         return
     client = mocks.get_client(app["client_id"])
-    enr, lines = mocks.collect(client, bool(app["statement_uploaded"]), st["bureau_mode"])
+    enr, lines = mocks.collect(client, bool(app["statement_uploaded"]), st["bureau_mode"],
+                               backoff=0.2 if st["step_delay"] > 0 else 0.0)
     with db.tx() as c:
         app = load(c, app_id)
         if app["status"] != "VERIFICATION":
@@ -114,8 +155,8 @@ def step_verify(app_id: str) -> None:
 
 
 def step_decide(app_id: str) -> None:
-    _sleep()
     st = db.runtime_settings()
+    _sleep(st["step_delay"])
     with db.tx() as c:
         app = load(c, app_id)
         if app["status"] != "DECISIONING":
@@ -136,7 +177,7 @@ def step_decide(app_id: str) -> None:
 
 
 def step_disburse(app_id: str) -> None:
-    _sleep()
+    _sleep(_delay())
     with db.tx() as c:
         app = load(c, app_id)
         if app["status"] != "DISBURSING":
@@ -149,9 +190,16 @@ def step_disburse(app_id: str) -> None:
             first = {"date": (date.today() + timedelta(days=30)).isoformat(), "amount": o["payment"]}
         contract = {"number": number, "date": date.today().isoformat(), "account": client["account"],
                     "amount": o["amount"], "rate": o["rate"], "term": o["term"], "first_payment": first,
+                    "schedule_start": date.today().isoformat(), "payments": [], "repaid": False,
                     "note": "Моделируемая выдача: реальных денежных операций нет"}
-        move(c, app, "DISBURSED", "system", f"Кредит выдан. Договор {number}", "client",
-             bank_message=f"Зачисление {o['amount']:,} ₽ на счёт {client['account']} (мок)".replace(",", " "), contract=contract)
+        if o["payment"]:                                            # аннуитет: сумма зачисляется на счёт; лимит овердрафта — не деньги, а право
+            _balance(c, app["client_id"])
+            c.execute("UPDATE accounts SET balance=balance+? WHERE client_id=?", (o["amount"], app["client_id"]))
+            bank_msg = f"Зачисление {o['amount']:,} ₽ на счёт {client['account']} (мок)".replace(",", " ")
+        else:
+            bank_msg = f"Открыт лимит {o['amount']:,} ₽ по счёту {client['account']} (мок), деньги не зачисляются".replace(",", " ")
+        title = f"Кредит выдан. Договор {number}" if o["payment"] else f"Лимит овердрафта открыт. Договор {number}"
+        move(c, app, "DISBURSED", "system", title, "client", bank_message=bank_msg, contract=contract)
 
 
 # ---------- действия клиента ----------
@@ -163,13 +211,12 @@ def _own(c, user: dict, app_id: str) -> dict:
     return app
 
 
-def create_application(user: dict, body: dict, idem_key: str | None) -> str:
-    pc = policy()
-    prod = pc["products"].get(body["product"])
+def validate_request(user: dict, product: str, amount: int, term: int, collateral: str) -> dict:
+    """Границы продукта, обеспечение и допуск клиента — одни и те же правила для заявки и для расчёта «что если»."""
+    prod = policy()["products"].get(product)
     if not prod:
         raise ServiceError(422, "Неизвестный продукт")
     client = mocks.get_client(user["client_id"])
-    amount, term, collateral = int(body["amount"]), int(body["term"]), body.get("collateral", "none")
     if not prod["min_amount"] <= amount <= prod["max_amount"]:
         raise ServiceError(422, f"Сумма для продукта: от {prod['min_amount']:,} до {prod['max_amount']:,} ₽".replace(",", " "))
     if not prod["min_term"] <= term <= prod["max_term"]:
@@ -178,6 +225,12 @@ def create_application(user: dict, body: dict, idem_key: str | None) -> str:
         raise ServiceError(422, "Для продукта недоступен выбранный вид обеспечения")
     if prod.get("needs_msp_priority") and not (client["msp_registry"] and client["priority_industry"]):
         raise ServiceError(422, "Льготная программа недоступна для вашей компании")
+    return prod
+
+
+def create_application(user: dict, body: dict, idem_key: str | None) -> str:
+    amount, term, collateral = int(body["amount"]), int(body["term"]), body.get("collateral", "none")
+    validate_request(user, body["product"], amount, term, collateral)
     consents = body.get("consents") or {}
     if not all(consents.get(k) for k in ("pd", "bureau", "fns")):
         raise ServiceError(422, "Нужны согласия на обработку данных, запрос в БКИ и в ФНС")
@@ -208,26 +261,34 @@ def create_application(user: dict, body: dict, idem_key: str | None) -> str:
 
 
 def client_accept(user: dict, app_id: str) -> None:
+    expired = False
     with db.tx() as c:
         app = _own(c, user, app_id)
         if app["status"] != "OFFER_READY":
             raise ServiceError(409, "Предложение недоступно для принятия")
         if datetime.fromisoformat(app["offer"]["valid_until"]) < datetime.now(timezone.utc):
-            move(c, app, "EXPIRED", "system", "Срок предложения истёк")
-            return
-        code = f"{secrets.randbelow(900000) + 100000}"
-        move(c, app, "AWAITING_SIGNATURE", user["login"], "Предложение принято. Договор готов к подписанию", "client", sign_code=code)
+            move(c, app, "EXPIRED", "system", "Срок предложения истёк", "client")
+            expired = True                                          # ошибку отдаём ПОСЛЕ коммита, иначе переход откатится
+        else:
+            code = f"{secrets.randbelow(900000) + 100000}"
+            move(c, app, "AWAITING_SIGNATURE", user["login"], "Предложение принято. Договор готов к подписанию", "client", sign_code=code)
+    if expired:
+        raise ServiceError(409, "Срок предложения истёк — подайте новую заявку")
 
 
 def client_sign(user: dict, app_id: str, code: str) -> None:
+    wrong = False
     with db.tx() as c:
         app = _own(c, user, app_id)
         if app["status"] != "AWAITING_SIGNATURE":
             raise ServiceError(409, "Сейчас подписание недоступно")
         if code.strip() != app["sign_code"]:
             log(c, app_id, user["login"], "sign-failed", "Неверный код подтверждения", "client")
-            raise ServiceError(422, "Неверный код подтверждения")
-        move(c, app, "DISBURSING", user["login"], "Договор подписан (простая ЭП — имитация)", "client")
+            wrong = True                                            # запись о попытке должна сохраниться — ошибку отдаём после коммита
+        else:
+            move(c, app, "DISBURSING", user["login"], "Договор подписан (простая ЭП — имитация)", "client")
+    if wrong:
+        raise ServiceError(422, "Неверный код подтверждения")
     kick(app_id)
 
 
@@ -284,6 +345,8 @@ def analyst_decide(user: dict, app_id: str, body: dict) -> None:
             term = int(body.get("term") or rec.get("term") or app["term"])
             if not prod["min_amount"] <= amount <= prod["max_amount"] or not prod["min_term"] <= term <= prod["max_term"]:
                 raise ServiceError(422, "Сумма или срок вне границ продукта")
+            if amount > app["amount"]:
+                raise ServiceError(422, f"Нельзя одобрить больше, чем запросил клиент ({_rub(app['amount'])})")
             grade = dec.get("grade") or "C"
             st = db.runtime_settings()
             kind = "DOWNSELL" if product != app["product"] else "AS_REQUESTED" if (amount, term) == (app["amount"], app["term"]) else "COUNTER"
@@ -314,15 +377,122 @@ def _status_view(app: dict) -> dict:
     if app["status"] == "AWAITING_DOCS" and app.get("doc_request"):
         text = f"{app['doc_request']['text']}. Закройте пункты в списке «Что нужно от вас»."
     nxt, need, eta = CLIENT_HINTS[app["status"]]
+    if app["status"] == "DISBURSED" and (app.get("contract") or {}).get("repaid"):
+        title, text, nxt, need = "Кредит погашен", "Все платежи по графику внесены. Спасибо!", "При необходимости оформите новый кредит", "—"
     return {"code": app["status"], "title": title, "text": text, "step": step, "turn": turn, "next": nxt, "need": need, "eta": eta,
             "transient": app["status"] in TRANSIENT, "terminal": app["status"] in TERMINAL}
 
 
 def _schedule(app: dict) -> list[dict] | None:
-    o = app.get("offer")
-    if o and o.get("payment") and app["status"] in ("OFFER_READY", "AWAITING_SIGNATURE", "DISBURSING", "DISBURSED"):
-        return pricing.schedule(o["amount"], o["rate"], o["term"])
-    return None
+    o, ct = app.get("offer"), app.get("contract")
+    if not (o and o.get("payment") and app["status"] in ("OFFER_READY", "AWAITING_SIGNATURE", "DISBURSING", "DISBURSED")):
+        return None
+    start = date.fromisoformat(ct["schedule_start"]) if ct and ct.get("schedule_start") else None   # после выдачи даты не «плывут»
+    rows = pricing.schedule(o["amount"], o["rate"], o["term"], start)
+    paid = {p["n"]: p for p in (ct or {}).get("payments", [])}
+    for r in rows:
+        r["paid"] = r["n"] in paid
+        r["paid_at"] = paid[r["n"]]["paid_at"] if r["n"] in paid else None
+    return rows
+
+
+def _rub(n: float) -> str:
+    return f"{round(n):,}".replace(",", " ") + " ₽"
+
+
+def loan_summary(app: dict) -> dict | None:
+    """Состояние выданного кредита: остаток долга, прогресс, ближайший платёж (посткредитный модуль — необязательный)."""
+    rows = _schedule(app)
+    if not rows or app["status"] != "DISBURSED":
+        return None
+    paid = [r for r in rows if r["paid"]]
+    nxt = next((r for r in rows if not r["paid"]), None)
+    amount = app["offer"]["amount"]
+    outstanding = paid[-1]["balance"] if paid else amount
+    return {"app_id": app["id"], "contract": app["contract"]["number"], "product_title": app["offer"]["product_title"], "amount": amount,
+            "rate": app["offer"]["rate"], "outstanding": outstanding, "progress": round(1 - outstanding / amount, 4),
+            "paid_count": len(paid), "total_count": len(rows), "total_paid": sum(r["payment"] for r in paid),
+            "interest_paid": sum(r["interest"] for r in paid), "total_interest": sum(r["interest"] for r in rows),
+            "next_payment": {"n": nxt["n"], "date": nxt["date"], "amount": nxt["payment"]} if nxt else None, "repaid": nxt is None}
+
+
+# ---------- расчётный счёт (демо) и платежи ----------
+
+def _balance(c, client_id: str) -> int:
+    r = c.execute("SELECT balance FROM accounts WHERE client_id=?", (client_id,)).fetchone()
+    if r is None:
+        bal = mocks.get_client(client_id)["start_balance"]
+        c.execute("INSERT INTO accounts(client_id, balance) VALUES(?,?)", (client_id, bal))
+        return bal
+    return r["balance"]
+
+
+def account_view(client_id: str) -> dict:
+    """Баланс счёта: читаем без блокировки записи; строка создаётся (со стартовым остатком) только при первом обращении."""
+    with db.read() as c:
+        r = c.execute("SELECT balance FROM accounts WHERE client_id=?", (client_id,)).fetchone()
+    if r is None:
+        with db.tx() as c:
+            bal = _balance(c, client_id)
+    else:
+        bal = r["balance"]
+    return {"number": mocks.get_client(client_id)["account"], "balance": bal}
+
+
+def account_topup(user: dict, amount: int) -> dict:
+    """Демо-пополнение расчётного счёта (реальных операций нет)."""
+    with db.tx() as c:
+        _balance(c, user["client_id"])
+        c.execute("UPDATE accounts SET balance=balance+? WHERE client_id=?", (amount, user["client_id"]))
+    return account_view(user["client_id"])
+
+
+def pay_next(user: dict, app_id: str) -> dict:
+    """Оплата ближайшего платежа по графику со счёта клиента (моделируется). Статус заявки не меняется."""
+    with db.tx() as c:
+        app = _own(c, user, app_id)
+        rows = _schedule(app)
+        if app["status"] != "DISBURSED" or not rows:
+            raise ServiceError(409, "По этой заявке нет графика платежей")
+        nxt = next((r for r in rows if not r["paid"]), None)
+        if nxt is None:
+            raise ServiceError(409, "Кредит уже погашен")
+        bal = _balance(c, user["client_id"])
+        if bal < nxt["payment"]:
+            raise ServiceError(422, f"Недостаточно средств на счёте: нужно {_rub(nxt['payment'])}, доступно {_rub(bal)}. Пополните счёт.")
+        c.execute("UPDATE accounts SET balance=balance-? WHERE client_id=?", (nxt["payment"], user["client_id"]))
+        ct = app["contract"]
+        ct["payments"].append({"n": nxt["n"], "paid_at": db.now(), "amount": nxt["payment"]})
+        ct["repaid"] = nxt["n"] == len(rows)
+        cur = c.execute("UPDATE applications SET contract=?, updated=?, version=version+1 WHERE id=? AND version=?",
+                        (db.dumps(ct), db.now(), app_id, app["version"]))
+        if cur.rowcount != 1:
+            raise ServiceError(409, "Заявка изменилась, обновите страницу")
+        log(c, app_id, user["login"], "payment", f"Платёж №{nxt['n']} на {_rub(nxt['payment'])} оплачен со счёта", "both")
+        if ct["repaid"]:
+            log(c, app_id, "system", "repaid", "Кредит полностью погашен", "both")
+        app["contract"], app["version"] = ct, app["version"] + 1
+        return {"loan": loan_summary(app), "balance": _balance(c, user["client_id"])}
+
+
+COLLATERAL_LABELS = {"none": "Без обеспечения", "equipment": "Залог приобретаемого оборудования или транспорта", "realty": "Залог недвижимости"}
+COLLATERAL_HINTS = {
+    "none": "Кредит без залога и поручителей; ставка выше, чем при наличии обеспечения.",
+    "guarantor": "Поручитель отвечает по кредиту вместе с компанией. Это снижает риск банка и ставку.",
+    "equipment": "Приобретаемое оборудование или транспорт остаётся в залоге у банка до погашения. Снижает ставку.",
+    "realty": "Недвижимость остаётся в залоге у банка до погашения. Сильнее всего снижает ставку.",
+}
+
+
+def collateral_options(client_id: str | None, allowed: list[str]) -> list[dict]:
+    """Названия обеспечения зависят от формы бизнеса: у ИП нет «собственников», поэтому — поручительство третьего лица."""
+    legal = mocks.get_client(client_id)["legal_form"] if client_id else "ООО"
+    labels = dict(COLLATERAL_LABELS, guarantor="Поручительство собственников бизнеса" if legal == "ООО" else "Поручительство третьего лица")
+    return [{"id": c, "label": labels[c], "hint": COLLATERAL_HINTS[c]} for c in allowed]
+
+
+def collateral_label(client_id: str, code: str) -> str:
+    return next(o["label"] for o in collateral_options(client_id, [code]))
 
 
 _INTERNAL_OFFER_KEYS = {"grade", "second_approver_required", "analyst_approved"}
@@ -345,6 +515,9 @@ def client_view(c, app: dict) -> dict:
         "collateral": app["collateral"], "purpose": app["purpose"], "purpose_text": app["purpose_text"],
         "created": app["created"], "updated": app["updated"], "status": _status_view(app), "steps": STEPS,
         "offer": _client_offer(app["offer"]) if app["status"] not in ("DECLINED",) else None,
+        "collateral_label": collateral_label(app["client_id"], app["offer"]["collateral"] if app["offer"] else app["collateral"]),
+        "collateral_label_requested": collateral_label(app["client_id"], app["collateral"]),
+        "loan": loan_summary(app),
         "reasons": reasons if show else [], "doc_request": app["doc_request"],
         "contract": app["contract"], "schedule": _schedule(app),
         "sign_code": app["sign_code"] if app["status"] == "AWAITING_SIGNATURE" else None,
@@ -357,8 +530,11 @@ def mask_inn(inn: str) -> str:
     return inn[:4] + "•" * (len(inn) - 6) + inn[-2:]
 
 
+_LIST_COLS = "id, seq, client_id, product, amount, term, status, created, updated, decision, doc_request, contract"   # без enrichment/offer/consents
+
+
 def list_for_client(c, user: dict) -> list[dict]:
-    rows = c.execute("SELECT * FROM applications WHERE client_id=? ORDER BY seq DESC", (user["client_id"],)).fetchall()
+    rows = c.execute(f"SELECT {_LIST_COLS} FROM applications WHERE client_id=? ORDER BY seq DESC", (user["client_id"],)).fetchall()
     out = []
     for r in rows:
         a = db.row_to_app(r)
@@ -377,14 +553,14 @@ def bank_row(app: dict) -> dict:
 
 
 def bank_list(c) -> list[dict]:
-    return [bank_row(db.row_to_app(r)) for r in c.execute("SELECT * FROM applications ORDER BY seq DESC")]
+    return [bank_row(db.row_to_app(r)) for r in c.execute(f"SELECT {_LIST_COLS} FROM applications ORDER BY seq DESC")]
 
 
 def bank_view(c, app: dict) -> dict:
     cl = mocks.get_client(app["client_id"])
     enr = app.get("enrichment")
-    summary = {k: (v if k != "receipts" else v) for k, v in cl.items() if k in
-               ("name", "legal_form", "inn", "ogrn", "okved", "director", "address", "registered", "tax_regime", "account", "receipts", "existing_payments")}
+    summary = {k: cl[k] for k in ("name", "legal_form", "inn", "ogrn", "okved", "director", "address", "registered", "tax_regime",
+                                  "account", "receipts", "existing_payments")}
     return {**bank_row(app), "request": {"product": app["product"], "amount": app["amount"], "term": app["term"], "collateral": app["collateral"],
                                          "purpose": app["purpose"], "purpose_text": app["purpose_text"]},
             "client_info": summary, "enrichment": enr, "decision": app.get("decision"), "offer": app.get("offer"),
@@ -396,11 +572,9 @@ def bank_view(c, app: dict) -> dict:
 
 def stats(c) -> dict:
     by = {r["status"]: r["n"] for r in c.execute("SELECT status, COUNT(*) n FROM applications GROUP BY status")}
-    total = sum(by.values())
-    done = by.get("DISBURSED", 0)
-    return {"total": total, "by_status": by, "manual_queue": by.get("MANUAL_REVIEW", 0),
+    return {"total": sum(by.values()), "by_status": by, "manual_queue": by.get("MANUAL_REVIEW", 0),
             "waiting_client": by.get("AWAITING_DOCS", 0) + by.get("OFFER_READY", 0) + by.get("AWAITING_SIGNATURE", 0),
-            "disbursed": done, "declined": by.get("DECLINED", 0)}
+            "disbursed": by.get("DISBURSED", 0), "declined": by.get("DECLINED", 0)}
 
 
 def client_enrichment(user: dict) -> tuple[dict, dict, dict]:

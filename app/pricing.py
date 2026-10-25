@@ -17,7 +17,7 @@ def term_add(term: int) -> float:
 
 
 def rate_for(product: str, grade: str, term: int, collateral: str, manual: bool, key_rate: float) -> float:
-    """Ставка = округление_вверх_до_0,5(K + OpEx + PD×LGD + CapCharge + Маржа + надбавка продукта + надбавка за срок), потолок K+10."""
+    """Ставка = округление_вверх_до_0,5(K + OpEx + PD×LGD + CapCharge + Маржа + надбавка продукта + надбавка за срок − скидка за обеспечение), потолок K+10."""
     pc = policy()
     pr = pc["pricing"]
     if product == "preferential":
@@ -26,7 +26,8 @@ def rate_for(product: str, grade: str, term: int, collateral: str, manual: bool,
     lgd = pr["lgd"].get(collateral, pr["lgd"]["none"]) / 100
     opex = pr["opex"]["manual" if manual else "auto"]
     raw = (key_rate + opex + g["pd"] * lgd + g["cap_charge"] + pr["margin"]
-           + pc["products"][product]["product_add"] + term_add(term))
+           + pc["products"][product]["product_add"] + term_add(term)
+           - pr["collateral_discount"].get(collateral, 0.0))
     return min(ceil_half(raw), key_rate + pr["cap_over_key"])
 
 
