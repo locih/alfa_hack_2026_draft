@@ -200,41 +200,102 @@ async function doLogin(login, password) {
 }
 
 // ---------- клиент: главная ----------
+function monthOf(i) { const now = new Date(); return new Date(now.getFullYear(), now.getMonth() - 11 + i, 1); }
+function monthName(dt, long = true) { return dt.toLocaleString("ru", long ? { month: "long", year: "numeric" } : { month: "short" }).replace(/^./, (c) => c.toUpperCase()); }
 function turnoverChart(receipts) {
   const max = Math.max(...receipts) * 1.1, W = 600, H = 150, bw = 34, gap = (W - 12 * bw) / 11;
-  const now = new Date(), avg = receipts.reduce((a, b) => a + b, 0) / receipts.length;
-  return h`<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев">
+  const avg = receipts.reduce((a, b) => a + b, 0) / receipts.length;
+  return h`<div class="chart-wrap">
+    <div class="chart-head"><div class="chart-info"><span class="muted small">Наведите на столбик, чтобы увидеть месяц</span></div>
+      <button class="btn sm" data-act="receipts-details">Детали поступлений</button></div>
+    <svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев">
     ${receipts.map((v, i) => {
-      const dt = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1), m = dt.toLocaleString("ru", { month: "short" }), full = dt.toLocaleString("ru", { month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase());
-      const bh = Math.max(3, (v / max) * H), x = i * (bw + gap), prev = i ? receipts[i - 1] : null;
-      return h`<g class="bar-g" tabindex="0" data-i="${i}" data-v="${v}" data-m="${full}" data-prev="${prev ?? ""}" data-avg="${Math.round(avg)}"><rect class="bar ${i < 6 ? "prev" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
+      const dt = monthOf(i), bh = Math.max(3, (v / max) * H), x = i * (bw + gap), prev = i ? receipts[i - 1] : null;
+      return h`<g class="bar-g" tabindex="0" data-i="${i}" data-v="${v}" data-m="${monthName(dt)}" data-prev="${prev ?? ""}" data-avg="${Math.round(avg)}"><rect class="bar ${i < 6 ? "prev" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
         <rect class="bar-hit" x="${x - gap / 2}" y="0" width="${bw + gap}" height="${H + 22}"></rect>
-        <text x="${x + bw / 2}" y="${H + 15}" text-anchor="middle">${m}</text></g>`;
-    })}</svg><div class="chart-tip" hidden></div></div>`;
+        <text x="${x + bw / 2}" y="${H + 15}" text-anchor="middle">${monthName(dt, false)}</text></g>`;
+    })}</svg></div>`;
 }
-function chartTip(e) {
-  const wrap = e.target.closest(".chart-wrap"); if (!wrap) return;
-  const tip = wrap.querySelector(".chart-tip"), g = e.target.closest(".bar-g");
-  if (!g || e.type === "mouseleave" || e.type === "focusout") { tip.hidden = true; wrap.classList.remove("hovering"); wrap.querySelectorAll(".bar-g.on").forEach((x) => x.classList.remove("on")); return; }
+function chartReset(wrap) {
+  wrap.classList.remove("hovering"); wrap.querySelectorAll(".bar-g.on").forEach((x) => x.classList.remove("on"));
+  wrap.querySelector(".chart-info").innerHTML = h`<span class="muted small">Наведите на столбик, чтобы увидеть месяц</span>`.s;
+}
+function chartShow(wrap, g) {
   wrap.querySelectorAll(".bar-g.on").forEach((x) => x.classList.remove("on")); g.classList.add("on"); wrap.classList.add("hovering");
   const v = +g.dataset.v, prev = g.dataset.prev === "" ? null : +g.dataset.prev, avg = +g.dataset.avg;
   const d = prev ? Math.round((v - prev) / prev * 100) : null, da = Math.round((v - avg) / avg * 100);
-  tip.innerHTML = h`<b>${g.dataset.m}</b><div class="chart-sum">${rub(v)}</div>
-    <div class="chart-row"><span>К прошлому месяцу</span><span class="${d == null ? "" : d >= 0 ? "up" : "down"}">${d == null ? "—" : (d >= 0 ? "+" : "") + d + " %"}</span></div>
-    <div class="chart-row"><span>К среднему за год</span><span class="${da >= 0 ? "up" : "down"}">${(da >= 0 ? "+" : "") + da + " %"}</span></div>
-    <div class="chart-note">Поступления на расчётный счёт по данным банка</div>`.s;
-  tip.hidden = false;
-  const r = wrap.getBoundingClientRect(), br = g.querySelector(".bar").getBoundingClientRect();
-  let left = br.left - r.left + br.width / 2 - tip.offsetWidth / 2; left = Math.max(0, Math.min(left, r.width - tip.offsetWidth));
-  tip.style.left = left + "px"; tip.style.top = Math.max(0, br.top - r.top - tip.offsetHeight - 10) + "px";
+  wrap.querySelector(".chart-info").innerHTML = h`<b>${g.dataset.m}</b><span class="chart-sum">${rub(v)}</span>
+    <span class="chart-delta ${d == null ? "" : d >= 0 ? "up" : "down"}">${d == null ? "первый месяц" : (d >= 0 ? "+" : "") + d + " % к прошлому"}</span>
+    <span class="chart-delta ${da >= 0 ? "up" : "down"}">${(da >= 0 ? "+" : "") + da + " % к среднему"}</span>`.s;
 }
-document.addEventListener("mouseover", chartTip); document.addEventListener("mouseleave", chartTip, true); document.addEventListener("focusin", chartTip); document.addEventListener("focusout", chartTip);
+document.addEventListener("mouseover", (e) => {
+  const wrap = e.target.closest?.(".chart-wrap"); if (!wrap) return;
+  const g = e.target.closest(".bar-g"); if (g) chartShow(wrap, g); else if (!e.target.closest(".chart-head")) chartReset(wrap);
+});
+document.addEventListener("mouseout", (e) => {
+  const wrap = e.target.closest?.(".chart-wrap"); if (!wrap) return;
+  if (!e.relatedTarget || !wrap.contains(e.relatedTarget)) chartReset(wrap);   // ушли за пределы диаграммы
+});
+document.addEventListener("focusin", (e) => { const g = e.target.closest?.(".bar-g"); if (g) chartShow(g.closest(".chart-wrap"), g); });
+document.addEventListener("focusout", (e) => { const wrap = e.target.closest?.(".chart-wrap"); if (wrap && !(e.relatedTarget && wrap.contains(e.relatedTarget))) chartReset(wrap); });
+
+// детализация поступлений: операции генерируются на фронте детерминированно из суммы месяца (демо; в API банка их пока нет)
+const PAYERS = ["ООО «Ромашка»", "ИП Петров А. В.", "ООО «ТехноСнаб»", "АО «Логистика Плюс»", "ООО «Альфа-Трейд»", "ИП Сидорова М. К.", "ООО «СтройМастер»", "ООО «Вега Маркет»", "ИП Громов А. С.", "ООО «Северный ветер»"];
+const PURPOSES_IN = ["Оплата по счёту", "Оплата по договору поставки", "Предоплата за услуги", "Возврат аванса", "Оплата за товар по УПД", "Эквайринг, выручка за день"];
+function receiptsOps(i, total) {
+  let seed = (i + 1) * 7919 + Math.round(total / 1000); const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const n = 6 + Math.floor(rnd() * 5), weights = Array.from({ length: n }, () => 0.4 + rnd()), sum = weights.reduce((a, b) => a + b, 0);
+  const dt = monthOf(i), days = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
+  const ops = weights.map((w, k) => ({ date: new Date(dt.getFullYear(), dt.getMonth(), 1 + Math.floor(rnd() * days)), payer: PAYERS[Math.floor(rnd() * PAYERS.length)], purpose: PURPOSES_IN[Math.floor(rnd() * PURPOSES_IN.length)], amount: Math.round(total * w / sum / 100) * 100 }));
+  ops.sort((a, b) => a.date - b.date); const diff = total - ops.reduce((a, o) => a + o.amount, 0); ops[ops.length - 1].amount += diff;
+  return ops;
+}
+let receiptsMonth = 11;
+function showReceipts(receipts, month = 11) {
+  receiptsMonth = month; document.getElementById("modal")?.remove();
+  const ops = receiptsOps(month, receipts[month]), dt = monthOf(month);
+  const el = document.createElement("div"); el.id = "modal"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Детали поступлений");
+  el.innerHTML = h`<div class="modal-panel">
+    <div class="modal-head"><div><h2>Поступления на счёт</h2><div class="muted small">Детализация по операциям · демо-данные, сформированы из месячных оборотов</div></div><button class="btn sm" data-act="modal-close" aria-label="Закрыть">✕</button></div>
+    <div class="month-tabs">${receipts.map((v, i) => h`<button class="mtab ${i === month ? "sel" : ""}" data-act="receipts-month" data-i="${i}">${monthName(monthOf(i), false)}</button>`)}</div>
+    <div class="row between wrapx mt"><div><div class="muted small">${monthName(dt)}</div><div class="big num">${rub(receipts[month])}</div></div><span class="chip">${ops.length} операций</span></div>
+    <div class="scroll mt"><table class="t ops"><thead><tr><th>Дата</th><th>Плательщик</th><th>Назначение</th><th class="right">Сумма</th></tr></thead><tbody>
+      ${ops.map((o) => h`<tr><td class="muted">${dateOnly(o.date)}</td><td><b>${o.payer}</b></td><td class="muted">${o.purpose}</td><td class="right num"><b>+${rub(o.amount)}</b></td></tr>`)}
+    </tbody></table></div>
+    <p class="hint">Реальная детализация придёт из выписки по счёту; в прототипе операции синтетические и повторяемые.</p></div>`.s;
+  document.body.appendChild(el); document.body.classList.add("iss-open");
+  const close = () => { el.classList.add("out"); document.body.classList.remove("iss-open"); setTimeout(() => el.remove(), 400); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  el.addEventListener("click", (e) => { if (e.target.closest("[data-act=modal-close]") || e.target === el) { close(); return; } const m = e.target.closest("[data-act=receipts-month]"); if (m) showReceipts(receipts, +m.dataset.i); });
+  document.addEventListener("keydown", onKey);
+}
+
+function loanBlock(l, acc) {
+  const np = l.next_payment;
+  return h`<div class="loan"><div class="keyline mb">
+      <div><span class="muted small">${T("остаток долга", "Остаток долга")}</span><div class="big num">${rub(l.outstanding)}</div><span class="muted small">из ${rub(l.amount)}</span></div>
+      <div><span class="muted small">${l.repaid ? "Статус" : "Ближайший платёж"}</span><div class="big num">${l.repaid ? "Погашен" : rub(np.amount)}</div><span class="muted small">${l.repaid ? "все платежи внесены" : "до " + dateOnly(np.date) + " · №" + np.n + " из " + l.total_count}</span></div>
+      <div><span class="muted small">Погашено</span><div class="big">${Math.round(l.progress * 100)} %</div><span class="muted small">платежей: ${l.paid_count} из ${l.total_count}</span></div></div>
+    <div class="progress" role="progressbar" aria-valuenow="${Math.round(l.progress * 100)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${Math.max(l.progress * 100, 1)}%"></span></div>
+    <div class="row wrapx between small mt"><span class="muted">Выплачено ${T("проценты", "процентов")}: ${rub(l.interest_paid)} из ${rub(l.total_interest)} · всего внесено: ${rub(l.total_paid)}</span>
+      ${l.repaid ? "" : h`<button class="btn good" data-act="pay" data-app="${l.app_id}">Оплатить платёж №${np.n} — ${rub(np.amount)}</button>`}</div>
+    <p class="hint">Платёж списывается с расчётного счёта (операция моделируется, реальных списаний нет). Остаток на счёте: <b class="num">${rub(acc.balance)}</b>.</p></div>`;
+}
+
+function accountCard(acc) {
+  return h`<div class="card flat"><div class="row between wrapx"><div><h3>Расчётный счёт</h3><div class="muted small num">${acc.number}</div></div>
+      <div class="right"><span class="muted small">Баланс (демо)</span><div class="big num">${rub(acc.balance)}</div></div></div>
+    <div class="row wrapx mt"><input id="topup" type="number" min="1000" max="5000000" step="1000" value="100000" aria-label="Сумма пополнения, ₽" style="max-width:180px">
+      <button class="btn" data-act="topup">Пополнить счёт (демо)</button></div>
+    <p class="hint">Демо-пополнение: реальных операций нет. С этого счёта оплачиваются платежи по кредиту.</p></div>`;
+}
 
 async function viewClient() {
   const [prof, apps, cat] = await Promise.all([api("/client/profile"), api("/client/applications"), api("/products")]);
   const prod = Object.fromEntries(cat.products.map((p) => [p.id, p]));
   const active = apps.find((a) => !a.status.terminal);
   const cn = prof.company;
+  window.__prof = prof;
   stopPoll();
   render(h`${raw(topbar())}<main class="wrap">
     <div class="row between wrapx mb"><div><h1>${cn.name}</h1>
@@ -660,6 +721,7 @@ async function route(silent) {
 const act = {
   "logout": () => logout(),
   "demo-login": (el) => doLogin(el.dataset.login, "demo123"),
+  "receipts-details": () => { if (window.__prof) showReceipts(window.__prof.receipts, receiptsMonth); },
   "role-tab": (el) => { $$(".ptab").forEach((b) => b.classList.toggle("sel", b === el)); $$(".role-group").forEach((g) => { g.hidden = g.dataset.group !== el.dataset.k; }); animateCounts(root()); },
   "scroll-roles": (el, e) => { e?.preventDefault?.(); document.getElementById("roles")?.scrollIntoView({ behavior: "smooth", block: "start" }); },
   "new-app": (el) => { draft = null; location.hash = "#/client/new" + (el.dataset.product ? "?product=" + el.dataset.product : ""); },

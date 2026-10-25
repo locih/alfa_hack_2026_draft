@@ -386,17 +386,26 @@ table.t tr.focus td { background: var(--warn-soft); }
 .chart text { fill: var(--muted); font-size: 11px; }
 
 .chart-wrap { position: relative; }
-.chart .bar { fill: var(--accent); opacity: .85; transition: opacity 0.562s var(--ease), fill 0.562s var(--ease); } .chart .bar.prev { fill: #aeb8c4; }
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; margin-bottom: 8px; }
+.chart-info { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-height: 32px; }
+.chart-info b { font-size: 14px; font-weight: 600; color: var(--muted); }
+.chart-info .chart-sum { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.chart-delta { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--soft); color: var(--muted); }
+.chart-delta.up { background: var(--ok-soft); color: var(--ok); } .chart-delta.down { background: var(--bad-soft); color: var(--bad); }
+.chart .bar { fill: var(--accent); opacity: .85; transition: opacity .35s var(--ease), fill .35s var(--ease); } .chart .bar.prev { fill: #aeb8c4; }
 .chart .bar-hit { fill: transparent; cursor: pointer; }
 .chart .bar-g { outline: none; } .chart .bar-g:focus-visible .bar { stroke: var(--info-fill); stroke-width: 2; }
 .chart-wrap.hovering .bar { opacity: .35; } .chart-wrap.hovering .bar-g.on .bar { opacity: 1; fill: var(--accent); }
 .chart-wrap.hovering .bar-g.on text { fill: var(--ink); font-weight: 700; }
-.chart-tip { position: absolute; z-index: 3; min-width: 220px; background: var(--black); color: #fff; border-radius: 14px; padding: 12px 14px; font-size: 13px; pointer-events: none; box-shadow: var(--shadow-m); animation: fade-in 0.405s var(--ease) both; }
-.chart-tip b { display: block; color: rgba(255,255,255,.7); font-weight: 500; font-size: 12px; }
-.chart-tip .chart-sum { font-size: 20px; font-weight: 700; margin: 2px 0 8px; letter-spacing: -.01em; }
-.chart-tip .chart-row { display: flex; justify-content: space-between; gap: 12px; color: rgba(255,255,255,.75); padding: 2px 0; }
-.chart-tip .up { color: #5ee89a; font-weight: 600; } .chart-tip .down { color: #ff8a80; font-weight: 600; }
-.chart-tip .chart-note { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,.45); }
+/* модальное окно */
+#modal { position: fixed; inset: 0; z-index: 60; background: rgba(15,15,16,.45); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 24px; animation: fade-in .4s var(--ease) both; }
+#modal.out { animation: iss-out .35s var(--ease) both; }
+.modal-panel { background: var(--card); border-radius: 28px; width: min(760px, 100%); max-height: 86vh; overflow: auto; padding: 28px; animation: rise .7s var(--ease) both; }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; } .modal-head h2 { margin: 0 0 4px; }
+.month-tabs { display: flex; flex-wrap: wrap; gap: 4px; background: var(--soft); border-radius: 999px; padding: 4px; margin-top: 16px; }
+.mtab { border: 0; background: transparent; padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--ink); transition: background .3s var(--ease), color .3s var(--ease); }
+.mtab:hover { background: var(--line); } .mtab.sel { background: var(--black); color: #fff; }
+table.ops td { padding: 12px 10px; }
 
 
 @media (max-width: 900px) {
