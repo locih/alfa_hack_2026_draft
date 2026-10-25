@@ -345,28 +345,30 @@ function feedBlock(prof, prod, active) {
   return h`<section class="feed" aria-label="Для вас"><div class="feed-track">${cards}</div></section>`;
 }
 
-async function viewClient() {
-  const [prof, apps, cat] = await Promise.all([api("/client/profile"), api("/client/applications"), api("/products")]);
-  const prod = Object.fromEntries(cat.products.map((p) => [p.id, p]));
-  const active = apps.find((a) => !a.status.terminal);
-  const cn = prof.company;
-  window.__prof = prof;
-  stopPoll();
-  render(h`${raw(topbar())}<main class="wrap">
-    <div class="row between wrapx mb"><div><h1>${cn.name}</h1>
-      <div class="muted">ИНН ${cn.inn} · ${cn.okved} · в банке ${prof.tenure_months} мес. · ${cn.tax_regime}</div></div>
-      <span class="chip">Ключевая ставка ${pct(prof.key_rate)}</span></div>
+// ---------- клиент: главная с разделами (Обзор · Кредиты · Новый кредит · Поступления) ----------
+const CLIENT_TABS = [["overview", "Обзор"], ["loans", "Кредиты"], ["products", "Новый кредит"], ["receipts", "Поступления"]];
+let clientTab = "overview";
 
-    ${active ? h`<a class="card status ${active.status.turn} mb" href="#/client/app/${active.id}" style="display:block;color:inherit;text-decoration:none">
-        <div class="row between wrapx"><div><span class="muted small">Активная заявка ${active.id} · ${active.product_title} · ${rub(active.amount)} на ${active.term} мес.</span>
-        <h2 style="margin-top:4px">${active.status.title}</h2><p class="muted" style="margin:0">${active.status.text}</p></div>
-        <span class="btn primary">${active.status.turn === "client" ? "Нужно ваше действие →" : "Открыть →"}</span></div></a>` : ""}
+function clientSection(k, c) {
+  const { prof, apps, prod, active } = c, cn = prof.company;
+  const appsCard = h`<div class="card"><h2>Мои заявки</h2>
+    ${apps.length ? apps.map((a) => h`<a href="#/client/app/${a.id}" class="approw">
+      <span><b>${a.product_title}</b><br><span class="muted small">${a.id} · ${rub(a.amount)} · ${a.term} мес. · ${dateOnly(a.created)}</span></span>
+      ${chip(a.status.code, a.status.title)}</a>`) : h`<p class="muted">Заявок пока нет. Подберите продукт в разделе «Новый кредит» — это займёт около 3 минут.</p>`}
+    <button class="btn primary mt" data-act="new-app" ${active ? "disabled" : ""}>Новая заявка</button>
+    ${active ? h`<p class="hint">Новую заявку можно подать после завершения текущей.</p>` : ""}</div>`;
+  const activeCard = active ? h`<a class="card status ${active.status.turn} mb" href="#/client/app/${active.id}" style="display:block;color:inherit;text-decoration:none">
+      <div class="row between wrapx"><div><span class="muted small">Активная заявка ${active.id} · ${active.product_title} · ${rub(active.amount)} на ${active.term} мес.</span>
+      <h2 style="margin-top:4px">${active.status.title}</h2><p class="muted" style="margin:0">${active.status.text}</p></div>
+      <span class="btn primary">${active.status.turn === "client" ? "Нужно ваше действие →" : "Открыть →"}</span></div></a>` : "";
 
-    ${feedBlock(prof, prod, active)}
-
+  if (k === "loans") return h`${activeCard}
     ${prof.loans.length ? h`<h2>Мои кредиты</h2><div class="grid g2 mb">${prof.loans.map((l) => h`<div class="card"><div class="row between wrapx"><div><b>${l.product_title}</b><br><span class="muted small">Договор ${l.contract} · ${pct(l.rate)}</span></div>
-          <a class="small" href="#/client/app/${l.app_id}">График и детали →</a></div><div class="mt">${loanBlock(l, prof.account)}</div></div>`)}${accountCard(prof.account)}</div>` : ""}
+          <a class="small" href="#/client/app/${l.app_id}">График и детали →</a></div><div class="mt">${loanBlock(l, prof.account)}</div></div>`)}${accountCard(prof.account)}</div>`
+      : h`<div class="card flat empty mb"><h2>Действующих кредитов нет</h2><p class="muted">Когда кредит будет выдан, здесь появятся остаток долга, график и кнопка оплаты платежа. Подобрать продукт можно в разделе <a href="#/client/products">«Новый кредит»</a>.</p></div>`}
+    ${appsCard}`;
 
+  if (k === "products") return h`${activeCard}
     <h2>Предодобрено по данным, которые банк уже знает</h2>
     <p class="muted small">Предварительная оценка по вашим оборотам — не гарантия: итоговые условия назовёт банк после проверки заявки.</p>
     <div class="grid g4 mb">${prof.preapproval.map((p) => {
@@ -378,18 +380,44 @@ async function viewClient() {
           <button class="btn primary" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Оформить</button>`
           : h`<p class="muted small">${p.message}</p><button class="btn" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Подать заявку</button>`}</div>`;
     })}</div>
+    <div class="card flat"><div class="row between wrapx"><div><h3>Не знаете, какой продукт нужен?</h3><p class="muted small" style="margin:0">Опишите задачу — подскажем продукт, сумму и срок, которые укладываются в платёжеспособность.</p></div>
+      <button class="btn" data-act="new-app" ${active ? "disabled" : ""}>Подобрать по задаче</button></div></div>`;
 
-    <div class="cols"><div class="card"><h2>Поступления на счёт за 12 месяцев</h2>
+  if (k === "receipts") return h`<div class="card"><h2>Поступления на счёт за 12 месяцев</h2>
       ${turnoverChart(prof.receipts)}
       <div class="stat"><span>Среднее: <b class="num">${rub(prof.avg_receipts)}</b> / мес.</span>
       <span>Динамика (6 мес. к предыдущим 6): <b>${prof.dynamics >= 0 ? "+" : ""}${Math.round(prof.dynamics * 100)} %</b></span>
-      <span>Платежи по кредитам: <b class="num">${rub(prof.existing_payments)}</b></span></div></div>
-      <div class="card"><h2>Мои заявки</h2>
-        ${apps.length ? apps.map((a) => h`<a href="#/client/app/${a.id}" class="approw">
-          <span><b>${a.product_title}</b><br><span class="muted small">${a.id} · ${rub(a.amount)} · ${a.term} мес. · ${dateOnly(a.created)}</span></span>
-          ${chip(a.status.code, a.status.title)}</a>`) : h`<p class="muted">Заявок пока нет. Выберите продукт выше — это займёт около 3 минут.</p>`}
-        <button class="btn primary mt" data-act="new-app" ${active ? "disabled" : ""}>Новая заявка</button>
-        ${active ? h`<p class="hint">Новую заявку можно подать после завершения текущей.</p>` : ""}</div></div></main>`);
+      <span>Платежи по кредитам: <b class="num">${rub(prof.existing_payments)}</b></span></div>
+      <p class="hint">Эти же обороты видит скоринг: среднее поступление и его стабильность определяют комфортную сумму кредита.</p></div>`;
+
+  // Обзор: лента, активная заявка, короткие плитки-ссылки в разделы
+  const loan = prof.loans.find((l) => !l.repaid && l.next_payment), best = prof.preapproval.filter((p) => p.available).sort((x, y) => y.max_amount - x.max_amount)[0];
+  const last = prof.receipts.length - 1, prev = prof.receipts[last - 1] || 0, dl = prev ? Math.round((prof.receipts[last] / prev - 1) * 100) : 0;
+  return h`${feedBlock(prof, prod, active)}${activeCard}
+    <div class="tiles g4 mb">
+      ${loan ? h`<a class="tile" href="#/client/loans"><span>Ближайший платёж</span><b data-count="${loan.next_payment.amount}">${rub(loan.next_payment.amount)}</b><span>до ${dateOnly(loan.next_payment.date)} · остаток ${rub(loan.outstanding)}</span></a>`
+             : h`<a class="tile" href="#/client/loans"><span>Кредиты</span><b>${apps.length ? apps.length : "—"}</b><span>${apps.length ? plural(apps.length, "заявка", "заявки", "заявок") + " в истории" : "действующих кредитов нет"}</span></a>`}
+      <a class="tile" href="#/client/products"><span>Предодобрено</span><b data-count="${best?.max_amount ?? 0}" data-prefix="до ">${best ? "до " + rub(best.max_amount) : "—"}</b><span>${best ? prod[best.product].title + " · от " + pct(best.rate_from) : "подайте заявку — рассмотрим вручную"}</span></a>
+      <a class="tile" href="#/client/receipts"><span>Поступления, ${monthName(monthOf(last), false)}</span><b data-count="${prof.receipts[last]}">${rub(prof.receipts[last])}</b><span>${dl >= 0 ? "+" : ""}${dl} % к прошлому месяцу · среднее ${rub(prof.avg_receipts)}</span></a>
+      <a class="tile" href="#/client/receipts"><span>Платёжная нагрузка</span><b>${prof.avg_receipts ? Math.round(prof.existing_payments / prof.avg_receipts * 100) : 0} %</b><span>платежи по кредитам ${rub(prof.existing_payments)} от среднего поступления</span></a>
+    </div>
+    ${apps.length && !active ? h`<div class="card flat"><div class="row between wrapx"><div><b>Последняя заявка</b><br><span class="muted small">${apps[0].product_title} · ${rub(apps[0].amount)} · ${dateOnly(apps[0].created)}</span></div>${chip(apps[0].status.code, apps[0].status.title)}</div></div>` : ""}`;
+}
+
+async function viewClient(tab = "overview") {
+  const [prof, apps, cat] = await Promise.all([api("/client/profile"), api("/client/applications"), api("/products")]);
+  const prod = Object.fromEntries(cat.products.map((p) => [p.id, p]));
+  const active = apps.find((a) => !a.status.terminal);
+  const cn = prof.company;
+  clientTab = CLIENT_TABS.some(([k]) => k === tab) ? tab : "overview";
+  window.__prof = prof; window.__client = { prof, apps, cat, prod, active };
+  stopPoll();
+  render(h`${raw(topbar())}<main class="wrap">
+    <div class="card head mb"><div class="row between wrapx"><div><h1>${cn.name}</h1>
+      <div class="muted">ИНН ${cn.inn} · ${cn.okved} · в банке ${prof.tenure_months} мес. · ${cn.tax_regime}</div></div>
+      <span class="chip">Ключевая ставка ${pct(prof.key_rate)}</span></div>
+    <nav class="ptabs client-tabs" aria-label="Разделы кабинета">${CLIENT_TABS.map(([k, t]) => h`<a class="ptab ${k === clientTab ? "sel" : ""}" href="#/client/${k}" data-act="client-tab" data-k="${k}">${t}${k === "loans" && active ? raw('<span class="cnt hot">1</span>') : ""}</a>`)}</nav></div>
+    <div id="ctab" data-tab="${clientTab}">${clientSection(clientTab, window.__client)}</div></main>`);
 }
 
 // ---------- клиент: новая заявка ----------
@@ -768,7 +796,7 @@ async function route(silent) {
       if (role !== "client") return (location.hash = "#/bank");
       if (parts[1] === "new") { lastSig = ""; return await viewNew(params); }
       if (parts[1] === "app") return await viewApp(parts[2]);
-      draft = null; lastSig = ""; return await viewClient();
+      draft = null; lastSig = ""; return await viewClient(parts[1]);
     }
     if (parts[0] === "bank") {
       if (role === "client") return (location.hash = "#/client");
@@ -784,6 +812,14 @@ const act = {
   "logout": () => logout(),
   "demo-login": (el) => doLogin(el.dataset.login, "demo123"),
   "receipts-details": () => { if (window.__prof) showReceipts(window.__prof.receipts, receiptsMonth); },
+  "client-tab": (el, ev) => {
+    if (!window.__client || !el.dataset.k || el.dataset.k === clientTab) { ev?.preventDefault?.(); return; }
+    ev?.preventDefault?.(); clientTab = el.dataset.k;
+    history.pushState(null, "", el.getAttribute("href")); lastHash = location.hash;
+    $$(".client-tabs .ptab").forEach((b) => b.classList.toggle("sel", b === el));
+    const box = $("#ctab"); box.classList.add("swap");
+    setTimeout(() => { box.innerHTML = clientSection(clientTab, window.__client).s; box.dataset.tab = clientTab; animateCounts(box); box.classList.remove("swap"); box.classList.add("in"); setTimeout(() => box.classList.remove("in"), 900); }, 260);
+  },
   "feed-dismiss": (el) => {
     try { localStorage.setItem("feed:" + el.dataset.key, todayKey()); } catch { /* приватный режим */ }
     const card = el.closest(".fcard"), track = card?.parentElement; if (!card) return;
