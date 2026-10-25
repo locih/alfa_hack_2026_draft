@@ -164,7 +164,7 @@ async function viewLogin() {
       <h1>Кредит для бизнеса без лишних шагов</h1>
       <p class="lead">Подбор продукта по задаче, заявка за три минуты, живой статус и понятное решение. Для банка — та же заявка, скоринг по факторам и ручной разбор в одном окне.</p>
       <div class="tags"><span class="chip accent">Прототип · Альфа-Будущее Хакатон 2026</span><span class="chip">Данные синтетические</span><span class="chip">БКИ, ЕГРЮЛ, ФНС — моки</span></div>
-      <div class="shapes" aria-hidden="true"><span class="s1"></span><span class="s2"></span><span class="s3"></span></div>
+      <div class="hero-art" aria-hidden="true"><img src="img/hero-3d.webp" alt="" width="1400" height="1050" decoding="async"></div>
     </div>
     <div class="roles">
       ${d ? h`<h2>Клиенты</h2>${clients.map(acc)}<h2>Банк</h2>${bank.map(acc)}` : h`<div class="notice plate mb">Демо-режим выключен. Войдите под своей учётной записью.</div>`}
@@ -440,7 +440,7 @@ function paintApp(a) {
       <button class="btn primary" data-act="sign">Подписать договор</button></div>`;
   }
   if (good) {
-    ctx = h`<div class="card mt" style="border-color:var(--ok)"><h2>${a.loan?.repaid ? "✅ Кредит погашен" : "🎉 Кредит выдан"}</h2><dl class="kv">
+    ctx = h`<div class="card mt issued"><img class="issued-art" src="img/success-3d.webp" alt="" width="1400" height="1050" decoding="async"><h2>${a.loan?.repaid ? "Кредит погашен" : "Кредит выдан"}</h2><dl class="kv">
       <dt>Договор</dt><dd>${a.contract.number} от ${dateOnly(a.contract.date)}</dd><dt>Сумма</dt><dd class="num">${rub(a.contract.amount)}</dd>
       <dt>Зачислено на счёт</dt><dd class="num">${a.contract.account}</dd><dt>Ставка</dt><dd>${pct(a.contract.rate)}</dd>
       ${a.contract.first_payment ? h`<dt>Первый платёж</dt><dd class="num">${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}</dd>` : ""}</dl>
