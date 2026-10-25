@@ -120,7 +120,13 @@ const GLOSS = {
 };
 const T = (key, text) => raw(`<span class="term" tabindex="0" role="note" data-tip="${esc(GLOSS[key] || "")}">${esc(text || key)}</span>`);
 
-const PRODUCT_ICON = { working: "▤", overdraft: "↻", development: "⚙", preferential: "★" };
+// иконки продуктов — @alfalab/icons (MIT), сконвертированы tools/alfa_icon.py
+const PRODUCT_ICON = {
+  working: raw('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img"><path d="M5 4a2 2 0 00-2 2h15a3 3 0 013 3v8a2 2 0 002-2V6a2 2 0 00-2-2H5z"/><path d="M1 10a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H3a2 2 0 01-2-2v-8zm11 4a2 2 0 11-4 0 2 2 0 014 0zm-6 4H3v-3l3 3zm11-8h-3l3 3v-3z" fill-rule="evenodd" clip-rule="evenodd"/></svg>'),
+  overdraft: raw('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-13.5A3.5 3.5 0 008.5 12H7a5 5 0 018.818-3.228L16 7.5h1V11h-3.5v-1l1.24-.177A3.494 3.494 0 0012 8.5zm3.5 3.5a3.5 3.5 0 01-6.24 2.177L10.5 14v-1H7v3.5h1l.182-1.272A5 5 0 0017 12h-1.5z" fill-rule="evenodd" clip-rule="evenodd"/></svg>'),
+  development: raw('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img"><path d="M20 3a1 1 0 011 1v17H3v-7.339a3 3 0 011.661-2.684l3.616-1.729A.5.5 0 019 9.695V11.8c0 .153.067.275.2.2l4.054-2.886A.5.5 0 0114 9.55V12h3V4a1 1 0 011-1h2z"/></svg>'),
+  preferential: raw('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img"><path d="M11.063 3.505c.324-.866 1.55-.866 1.873 0l1.794 4.798a1 1 0 00.893.649l5.118.223c.924.04 1.302 1.206.578 1.782l-4.008 3.189a1 1 0 00-.341 1.05l1.369 4.935c.247.892-.745 1.612-1.516 1.102l-4.271-2.827a1 1 0 00-1.104 0l-4.272 2.827c-.77.51-1.762-.21-1.515-1.102l1.368-4.936a1 1 0 00-.34-1.05l-4.01-3.188c-.723-.576-.344-1.741.58-1.782l5.117-.223a1 1 0 00.893-.65l1.794-4.797z"/></svg>')
+};
 
 function chip(code, title) {
   const m = {
@@ -285,7 +291,7 @@ function paintNew() {
       <div class="field"><label for="ptext">Расскажите своими словами (необязательно)</label><textarea id="ptext" data-bind="purpose_text" placeholder="Например: закупить партию муки на два месяца вперёд">${d.purpose_text}</textarea></div>
       <h2 class="mt2">Подходящий продукт</h2>${rec ? h`<p class="muted small">По вашей цели рекомендуем «${prod[rec].title}» — отмечено ниже.</p>` : ""}
       <div class="grid g2">${d.cat.products.map((x) => h`<button class="prod ${d.product === x.id ? "sel" : ""}" data-act="pick-product" data-id="${x.id}" ${x.eligible ? "" : "disabled"}>
-        <h3>${PRODUCT_ICON[x.id]} ${x.title} ${rec === x.id ? raw('<span class="chip accent">рекомендуем</span>') : ""} ${x.id === "preferential" && x.eligible ? raw('<span class="chip ok">вам доступно</span>') : ""}</h3>
+        <h3><span class="pic sm" aria-hidden="true">${PRODUCT_ICON[x.id]}</span>${x.title} ${rec === x.id ? raw('<span class="chip accent">рекомендуем</span>') : ""} ${x.id === "preferential" && x.eligible ? raw('<span class="chip ok">вам доступно</span>') : ""}</h3>
         <div class="muted small">${x.tagline}</div>
         <div class="small mt">${x.kind === "limit" ? "Лимит" : "Сумма"}: ${rub(x.min_amount)} – ${rub(x.max_amount)}${x.kind === "limit" ? "" : " · срок " + x.min_term + "–" + x.max_term + " мес."}</div>
         ${x.eligible ? "" : h`<div class="small" style="color:var(--bad)">Недоступно для вашей компании</div>`}</button>`)}</div>

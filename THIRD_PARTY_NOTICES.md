@@ -41,3 +41,9 @@ LLM не используются. Основной режим (`rules`) — д�
 | Зачисление средств | запись о договоре (`service.step_disburse`) |
 
 Все клиенты, ИНН (с нереальным кодом региона `00`), счета и суммы — синтетические.
+
+## Дизайн-токены и иконки Альфа-Банка (открытая дизайн-система core-components)
+
+- `@alfalab/core-components-vars` 11.4.1 — MIT, core-ds (https://github.com/core-ds/core-components). Файлы в `static/vendor/alfa-vars/`: цвета, радиусы, отступы, тени, типографика.
+- `@alfalab/icons` 3.510.0 — MIT, core-ds. SVG в `static/vendor/alfa-icons/` извлечены из React-модулей пакета скриптом `tools/alfa_icon.py` (в репозитории хакатона).
+- Фирменные шрифты Styrene UI и Alfa Interface Sans не используются (лицензионные); текст набран системным шрифтом, как в самой дизайн-системе по умолчанию.

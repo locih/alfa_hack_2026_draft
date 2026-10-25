@@ -125,6 +125,9 @@ details > summary { cursor: pointer; }
 .ptile { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
 .ptile h3 { margin: 0; font-size: 15px; line-height: 20px; }
 .pic { flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; font-size: 18px; color: var(--ink); }
+.pic svg { width: 22px; height: 22px; } .pic.sm { width: 32px; height: 32px; } .pic.sm svg { width: 18px; height: 18px; }
+.card.flat:hover .pic { background: var(--accent-soft); color: var(--accent); } .prod.sel .pic { background: var(--accent-soft); color: var(--accent); }
+.pic { transition: background .25s var(--ease), color .25s var(--ease); }
 .card.flat .big { font-size: 24px; line-height: 28px; margin-bottom: 2px; }
 .card.flat .btn { margin-top: 14px; }
 .approw { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: inherit; padding: 12px 10px; margin: 0 -10px; border-radius: var(--radius-xs); text-decoration: none; transition: background .15s var(--ease); }
