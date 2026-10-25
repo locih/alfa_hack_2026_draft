@@ -290,6 +290,61 @@ function accountCard(acc) {
     <p class="hint">Демо-пополнение: реальных операций нет. С этого счёта оплачиваются платежи по кредиту.</p></div>`;
 }
 
+// ---------- клиент: лента «Для вас» (напоминания, предложения, события) ----------
+const BELL = raw('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img"><path d="M3.404 9.171L15.233 21l.926-.669.188-1.065a7 7 0 011.943-3.73l1.292-1.293a6.2 6.2 0 001.822-4.416c0-3.53-3.312-6.827-6.827-6.827a6.2 6.2 0 00-4.416 1.822L8.868 6.114a7 7 0 01-3.73 1.943l-1.064.188-.67.926zm2.663 9.078a2.498 2.498 0 003.534 0l-3.534-3.533a2.498 2.498 0 000 3.533z"/></svg>');
+const todayKey = () => new Date().toISOString().slice(0, 10);
+const feedHidden = (key) => { try { return localStorage.getItem("feed:" + key) === todayKey(); } catch { return false; } };
+const daysUntil = (iso) => { const d = new Date(iso); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((d - t) / 864e5); };
+const whenText = (n) => n < 0 ? `просрочен на ${-n} ${plural(-n, "день", "дня", "дней")}` : n === 0 ? "сегодня" : n === 1 ? "завтра" : `через ${n} ${plural(n, "день", "дня", "дней")}`;
+const plural = (n, a, b, c) => { const m = n % 10, k = n % 100; return (k >= 11 && k <= 14) ? c : m === 1 ? a : (m >= 2 && m <= 4) ? b : c; };
+
+function feedBlock(prof, prod, active) {
+  const cards = [];
+  // 1. Ближайший платёж по каждому действующему кредиту — главная карточка ленты
+  for (const l of prof.loans) {
+    if (l.repaid || !l.next_payment) continue;
+    const np = l.next_payment, key = `pay-${l.app_id}-${np.n}`;
+    if (feedHidden(key)) continue;
+    const n = daysUntil(np.date), lack = Math.max(0, np.amount - prof.account.balance);
+    const mood = n < 0 ? "late" : n <= 3 ? "soon" : "";
+    cards.push(h`<article class="fcard pay ${mood}" data-key="${key}" style="--i:${cards.length}">
+      <span class="fico" aria-hidden="true">${BELL}</span>
+      <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
+      <div class="fbody"><div class="ftitle">${n < 0 ? "Платёж просрочен" : "Платёж"} ${rub(np.amount)} <span class="fwhen">· ${n < 0 ? whenText(n) : "до " + dateOnly(np.date) + ", " + whenText(n)}</span></div>
+      <p class="ftext">${l.product_title} · платёж №${np.n} из ${l.total_count} · спишем с расчётного счёта.
+        ${lack > 0 ? h`<b class="flack">На счёте ${rub(prof.account.balance)}, не хватает ${rub(lack)} — пополните счёт.</b>` : h`На счёте ${rub(prof.account.balance)} — хватает.`}</p>
+      <div class="facts"><button class="btn primary" data-act="pay" data-app="${l.app_id}" ${lack > 0 ? "disabled" : ""}>Оплатить сейчас</button>
+        <button class="btn link" data-act="feed-dismiss" data-key="${key}">Напомнить завтра</button></div></div></article>`);
+  }
+  // 2. Нужно действие клиента по активной заявке
+  if (active && active.status.turn === "client" && !feedHidden("act-" + active.id + "-" + active.status.code)) {
+    const key = "act-" + active.id + "-" + active.status.code;
+    cards.push(h`<article class="fcard need" data-key="${key}" style="--i:${cards.length}">
+      <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
+      <div class="fbody"><div class="ftitle">Нужно ваше действие</div><p class="ftext">${active.status.title}: ${active.status.text}</p>
+      <div class="facts"><a class="btn primary" href="#/client/app/${active.id}">Открыть заявку</a></div></div></article>`);
+  }
+  // 3. Лучшее предодобренное предложение (когда нет активной заявки)
+  if (!active) {
+    const best = prof.preapproval.filter((p) => p.available && prod[p.product]?.eligible).sort((a, b) => b.max_amount - a.max_amount)[0];
+    const key = best && `pre-${best.product}-${best.max_amount}`;
+    if (best && !feedHidden(key)) cards.push(h`<article class="fcard" data-key="${key}" style="--i:${cards.length}">
+      <span class="fico soft" aria-hidden="true">${PRODUCT_ICON[best.product]}</span>
+      <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
+      <div class="fbody"><div class="ftitle">Предодобрено до ${rub(best.max_amount)}</div>
+      <p class="ftext">${prod[best.product].title} · ставка от ${pct(best.rate_from)} · по оборотам, которые банк уже видит. Без справок и визита.</p>
+      <div class="facts"><button class="btn primary" data-act="new-app" data-product="${best.product}">Оформить</button></div></div></article>`);
+    const pref = prof.preapproval.find((p) => p.product === "preferential" && p.available && prod.preferential?.eligible);
+    if (pref && best?.product !== "preferential" && !feedHidden("pref")) cards.push(h`<article class="fcard ok" data-key="pref" style="--i:${cards.length}">
+      <button class="fx" data-act="feed-dismiss" data-key="pref" aria-label="Скрыть до завтра">×</button>
+      <div class="fbody"><div class="ftitle">Вам доступна льготная программа</div>
+      <p class="ftext">Компания в реестре МСП приоритетной отрасли: ставка от ${pct(pref.rate_from)} до ${rub(pref.max_amount)}.</p>
+      <div class="facts"><button class="btn" data-act="new-app" data-product="preferential">Посмотреть условия</button></div></div></article>`);
+  }
+  if (!cards.length) return "";
+  return h`<section class="feed" aria-label="Для вас"><div class="feed-track">${cards}</div></section>`;
+}
+
 async function viewClient() {
   const [prof, apps, cat] = await Promise.all([api("/client/profile"), api("/client/applications"), api("/products")]);
   const prod = Object.fromEntries(cat.products.map((p) => [p.id, p]));
@@ -306,6 +361,8 @@ async function viewClient() {
         <div class="row between wrapx"><div><span class="muted small">Активная заявка ${active.id} · ${active.product_title} · ${rub(active.amount)} на ${active.term} мес.</span>
         <h2 style="margin-top:4px">${active.status.title}</h2><p class="muted" style="margin:0">${active.status.text}</p></div>
         <span class="btn primary">${active.status.turn === "client" ? "Нужно ваше действие →" : "Открыть →"}</span></div></a>` : ""}
+
+    ${feedBlock(prof, prod, active)}
 
     ${prof.loans.length ? h`<h2>Мои кредиты</h2><div class="grid g2 mb">${prof.loans.map((l) => h`<div class="card"><div class="row between wrapx"><div><b>${l.product_title}</b><br><span class="muted small">Договор ${l.contract} · ${pct(l.rate)}</span></div>
           <a class="small" href="#/client/app/${l.app_id}">График и детали →</a></div><div class="mt">${loanBlock(l, prof.account)}</div></div>`)}${accountCard(prof.account)}</div>` : ""}
@@ -728,6 +785,11 @@ const act = {
   "logout": () => logout(),
   "demo-login": (el) => doLogin(el.dataset.login, "demo123"),
   "receipts-details": () => { if (window.__prof) showReceipts(window.__prof.receipts, receiptsMonth); },
+  "feed-dismiss": (el) => {
+    try { localStorage.setItem("feed:" + el.dataset.key, todayKey()); } catch { /* приватный режим */ }
+    const card = el.closest(".fcard"), track = card?.parentElement; if (!card) return;
+    card.classList.add("gone"); setTimeout(() => { card.remove(); if (track && !track.children.length) track.closest(".feed")?.remove(); }, 450);
+  },
   "role-tab": (el) => { $$(".ptab").forEach((b) => b.classList.toggle("sel", b === el)); $$(".role-group").forEach((g) => { g.hidden = g.dataset.group !== el.dataset.k; }); animateCounts(root()); },
   "scroll-roles": (el, e) => { e?.preventDefault?.(); document.getElementById("roles")?.scrollIntoView({ behavior: "smooth", block: "start" }); },
   "new-app": (el) => { draft = null; location.hash = "#/client/new" + (el.dataset.product ? "?product=" + el.dataset.product : ""); },

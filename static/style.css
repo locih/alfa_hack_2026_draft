@@ -464,3 +464,32 @@ details > summary { transition: color 0.338s; } details > summary:hover { color:
 table.sched tfoot td { border-top: 2px solid var(--line); border-bottom: 0; padding-top: 12px; }
 table.sched tr.paid td { color: var(--muted); }
 .tick { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); font-weight: 700; font-size: 13px; }
+
+/* лента «Для вас»: напоминание о платеже, действие по заявке, предложения */
+.feed { margin: 0 -20px 22px; padding: 4px 20px 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.feed::-webkit-scrollbar { display: none; }
+.feed-track { display: flex; gap: 14px; }
+.fcard { position: relative; flex: 0 0 auto; width: min(560px, 86vw); scroll-snap-align: start; background: var(--card); border-radius: 24px; padding: 22px 56px 22px 24px; box-shadow: var(--shadow, 0 1px 2px rgba(0,0,0,.04)); overflow: hidden;
+  animation: rise 1.1s var(--ease) both; animation-delay: calc(var(--i, 0) * 120ms); transition: opacity .45s var(--ease), transform .45s var(--ease); }
+.fcard.gone { opacity: 0; transform: translateY(8px) scale(.98); }
+.fcard .ftitle { font-size: 20px; line-height: 1.2; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
+.fcard .fwhen { font-weight: 500; opacity: .75; font-size: 16px; }
+.fcard .ftext { margin: 0 0 14px; font-size: 14.5px; line-height: 1.45; color: var(--muted); }
+.fcard .facts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fcard .fx { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(0,0,0,.06); color: inherit; font-size: 20px; line-height: 1; cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast) var(--ease); }
+.fcard .fx:hover { background: rgba(0,0,0,.12); }
+.fcard { display: flex; gap: 16px; align-items: flex-start; } .fcard .fbody { flex: 1; min-width: 0; }
+.fcard .fico { flex: none; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.fcard .fico svg { width: 24px; height: 24px; } .fcard .fico.soft { background: var(--soft); color: var(--ink); }
+.fcard.need { background: var(--accent-soft); } .fcard.ok { background: var(--ok-soft); } .fcard.ok .ftext { color: var(--ink); }
+/* платёж: чёрная карточка, при сроке ≤ 3 дней или просрочке — красная */
+.fcard.pay { background: #0f0f10; color: #fff; } .fcard.pay .ftext { color: rgba(255,255,255,.72); } .fcard.pay .flack { color: #fff; display: block; margin-top: 4px; }
+.fcard.pay .fx { background: rgba(255,255,255,.12); } .fcard.pay .fx:hover { background: rgba(255,255,255,.22); }
+.fcard.pay .fico { background: var(--accent); color: #fff; } .fcard.pay .btn.link { color: rgba(255,255,255,.75); }
+.fcard.pay .btn.primary:disabled { opacity: .5; }
+.fcard.pay.soon, .fcard.pay.late { background: var(--accent); } .fcard.pay.soon .ftext, .fcard.pay.late .ftext { color: rgba(255,255,255,.85); }
+.fcard.pay.soon .fico, .fcard.pay.late .fico { background: rgba(255,255,255,.18); }
+.fcard.pay.soon .btn.primary, .fcard.pay.late .btn.primary { background: #fff; color: var(--accent); border-color: #fff; }
+.fcard.pay.late .fico svg { animation: ring 1.6s ease-in-out infinite; }
+@keyframes ring { 0%, 60%, 100% { transform: rotate(0); } 10% { transform: rotate(-14deg); } 20% { transform: rotate(12deg); } 30% { transform: rotate(-8deg); } 40% { transform: rotate(6deg); } 50% { transform: rotate(0); } }
+@media (max-width: 600px) { .fcard { padding: 18px 48px 18px 18px; border-radius: 20px; } .fcard .ftitle { font-size: 18px; } .fcard .fico { display: none; } }
