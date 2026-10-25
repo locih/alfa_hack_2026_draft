@@ -216,13 +216,13 @@ function turnoverChart(receipts) {
   const max = Math.max(...receipts) * 1.1, W = 600, H = 150, bw = 34, gap = (W - 12 * bw) / 11;
   const avg = receipts.reduce((a, b) => a + b, 0) / receipts.length;
   return h`<div class="chart-wrap">
-    <div class="chart-head"><div class="chart-info"><span class="muted small">Наведите на столбик, чтобы увидеть месяц · пунктир — среднее ${rub(Math.round(avg))}</span></div>
+    <div class="chart-head"><div class="chart-info"><span class="muted small">Наведите на столбик · пунктир — среднее ${rub(Math.round(avg))} · красным — падение ≥ 20 % к прошлому месяцу</span></div>
       <button class="btn sm" data-act="receipts-details">Детали поступлений</button></div>
-    <svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев"><defs><linearGradient id="vgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a85ff"/><stop offset="1" stop-color="#5a3df0"/></linearGradient><linearGradient id="ggrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff4d"/><stop offset="1" stop-color="#8fd400"/></linearGradient></defs>
+    <svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев"><defs><linearGradient id="vgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a85ff"/><stop offset="1" stop-color="#5a3df0"/></linearGradient><linearGradient id="ggrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff4d"/><stop offset="1" stop-color="#8fd400"/></linearGradient><linearGradient id="rgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6b5e"/><stop offset="1" stop-color="#d61f12"/></linearGradient></defs>
     <line class="r-avg" x1="0" x2="${W}" y1="${H - (avg / max) * H}" y2="${H - (avg / max) * H}"/>
     ${receipts.map((v, i) => {
       const dt = monthOf(i), bh = Math.max(3, (v / max) * H), x = i * (bw + gap), prev = i ? receipts[i - 1] : null;
-      return h`<g class="bar-g" tabindex="0" data-i="${i}" data-v="${v}" data-m="${monthName(dt)}" data-prev="${prev ?? ""}" data-avg="${Math.round(avg)}"><rect class="bar ${i === 11 ? "now" : v < avg ? "low" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
+      return h`<g class="bar-g" tabindex="0" data-i="${i}" data-v="${v}" data-m="${monthName(dt)}" data-prev="${prev ?? ""}" data-avg="${Math.round(avg)}"><rect class="bar ${i === 11 ? "now" : prev && v < prev * 0.8 ? "drop" : v < avg ? "low" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
         <rect class="bar-hit" x="${x - gap / 2}" y="0" width="${bw + gap}" height="${H + 22}"></rect>
         <text x="${x + bw / 2}" y="${H + 15}" text-anchor="middle">${monthName(dt, false)}</text></g>`;
     })}</svg></div>`;
@@ -262,22 +262,47 @@ function receiptsOps(i, total) {
   return ops;
 }
 let receiptsMonth = 11;
-function showReceipts(receipts, month = 11) {
+// «Детали поступлений»: период выбирается календарём (от — до), пресетами или по месяцу
+const isoDay = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+let receiptsRange = null;
+function showReceipts(receipts, month = 11, range = null) {
   receiptsMonth = month; document.getElementById("modal")?.remove();
-  const ops = receiptsOps(month, receipts[month]), dt = monthOf(month);
+  const today = new Date(), minD = monthOf(0), maxD = today;
+  if (!range) { const dt = monthOf(month); range = { from: dt, to: new Date(Math.min(maxD, new Date(dt.getFullYear(), dt.getMonth() + 1, 0))) }; }
+  receiptsRange = range;
+  const inRange = (d) => d >= range.from && d <= new Date(range.to.getFullYear(), range.to.getMonth(), range.to.getDate(), 23, 59, 59);
+  const ops = []; receipts.forEach((v, i) => { const dt = monthOf(i), end = new Date(dt.getFullYear(), dt.getMonth() + 1, 0); if (end >= range.from && dt <= range.to) ops.push(...receiptsOps(i, v).filter((o) => inRange(o.date))); });
+  ops.sort((x, y) => x.date - y.date);
+  const total = ops.reduce((t, o) => t + o.amount, 0), days = Math.round((range.to - range.from) / 864e5) + 1;
+  const preset = (months) => { const to = maxD, from = new Date(to.getFullYear(), to.getMonth() - months + 1, 1); return { from: from < minD ? minD : from, to }; };
+  const presets = [["m", "Месяц", 1], ["q", "Квартал", 3], ["h", "Полгода", 6], ["y", "Год", 12]];
+  const same = (r1, r2) => isoDay(r1.from) === isoDay(r2.from) && isoDay(r1.to) === isoDay(r2.to);
+  const label = `${range.from.toLocaleDateString("ru-RU")} – ${range.to.toLocaleDateString("ru-RU")}`;
   const el = document.createElement("div"); el.id = "modal"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Детали поступлений");
   el.innerHTML = h`<div class="modal-panel">
-    <div class="modal-head"><div><h2>Поступления на счёт</h2><div class="muted small">Детализация по операциям · демонстрационные операции, сформированы из месячных оборотов; в банке здесь будет выписка по счёту</div></div><button class="btn sm" data-act="modal-close" aria-label="Закрыть">✕</button></div>
-    <div class="month-tabs">${receipts.map((v, i) => h`<button class="mtab ${i === month ? "sel" : ""}" data-act="receipts-month" data-i="${i}">${monthName(monthOf(i), false)}</button>`)}</div>
-    <div class="row between wrapx mt"><div><div class="muted small">${monthName(dt)}</div><div class="big num">${rub(receipts[month])}</div></div><span class="chip">${ops.length} операций</span></div>
-    <div class="scroll mt"><table class="t ops"><thead><tr><th>Дата</th><th>Плательщик</th><th>Назначение</th><th class="right">Сумма</th></tr></thead><tbody>
-      ${ops.map((o) => h`<tr><td class="muted">${dateOnly(o.date)}</td><td><b>${o.payer}</b></td><td class="muted">${o.purpose}</td><td class="right num"><b>+${rub(o.amount)}</b></td></tr>`)}
+    <div class="modal-head"><div><h2>Поступления на счёт</h2><div class="muted small">Детализация по операциям за выбранный период · демонстрационные операции, сформированы из месячных оборотов; в банке здесь будет выписка по счёту</div></div><button class="btn sm" data-act="modal-close" aria-label="Закрыть">×</button></div>
+    <div class="period mt"><div class="ptabs scn">${presets.map(([k, t, m]) => h`<button class="ptab ${same(range, preset(m)) ? "sel" : ""}" data-act="receipts-preset" data-m="${m}">${t}</button>`)}</div>
+      <div class="period-dates"><label>с <input type="date" data-act="receipts-from" value="${isoDay(range.from)}" min="${isoDay(minD)}" max="${isoDay(range.to)}"></label><label>по <input type="date" data-act="receipts-to" value="${isoDay(range.to)}" min="${isoDay(range.from)}" max="${isoDay(maxD)}"></label></div></div>
+    <div class="month-tabs">${receipts.map((v, i) => { const dt = monthOf(i), end = new Date(dt.getFullYear(), dt.getMonth() + 1, 0); const act = end >= range.from && dt <= range.to; return h`<button class="mtab ${act ? "sel" : ""}" data-act="receipts-month" data-i="${i}" title="${monthName(dt)} · ${rub(v)}">${monthName(dt, false)}</button>`; })}</div>
+    <div class="row between wrapx mt"><div><div class="muted small">${label} · ${days} ${plural(days, "день", "дня", "дней")}</div><div class="big num">${rub(total)}</div></div><span class="chip">${ops.length} ${plural(ops.length, "операция", "операции", "операций")}</span></div>
+    <div class="scroll mt ops-scroll"><table class="t ops"><thead><tr><th>Дата</th><th>Плательщик</th><th>Назначение</th><th class="right">Сумма</th></tr></thead><tbody>
+      ${ops.length ? ops.map((o) => h`<tr><td class="muted">${dateOnly(o.date)}</td><td><b>${o.payer}</b></td><td class="muted">${o.purpose}</td><td class="right num"><b>+${rub(o.amount)}</b></td></tr>`) : h`<tr><td colspan="4" class="muted">За выбранный период поступлений нет.</td></tr>`}
     </tbody></table></div>
-    <p class="hint">Реальная детализация придёт из выписки по счёту; в прототипе операции синтетические и повторяемые.</p></div>`.s;
+    <p class="hint">Реальная детализация придёт из выписки по счёту; в прототипе операции синтетические и повторяемые. Выгрузка за период — в следующей версии.</p></div>`.s;
   document.body.appendChild(el); document.body.classList.add("iss-open");
   const close = () => { el.classList.add("out"); document.body.classList.remove("iss-open"); setTimeout(() => el.remove(), 400); document.removeEventListener("keydown", onKey); };
   const onKey = (e) => { if (e.key === "Escape") close(); };
-  el.addEventListener("click", (e) => { if (e.target.closest("[data-act=modal-close]") || e.target === el) { close(); return; } const m = e.target.closest("[data-act=receipts-month]"); if (m) showReceipts(receipts, +m.dataset.i); });
+  el.addEventListener("click", (e) => {
+    if (e.target.closest("[data-act=modal-close]") || e.target === el) { close(); return; }
+    const m = e.target.closest("[data-act=receipts-month]"); if (m) { showReceipts(receipts, +m.dataset.i); return; }
+    const p = e.target.closest("[data-act=receipts-preset]"); if (p) showReceipts(receipts, 11, preset(+p.dataset.m));
+  });
+  el.addEventListener("change", (e) => {
+    const t = e.target; if (!t.dataset.act?.startsWith("receipts-")) return;
+    const r = { ...receiptsRange }; const v = t.value ? new Date(t.value + "T00:00:00") : null; if (!v) return;
+    if (t.dataset.act === "receipts-from") r.from = v > r.to ? r.to : v; else r.to = v < r.from ? r.from : v;
+    showReceipts(receipts, 11, r);
+  });
   document.addEventListener("keydown", onKey);
 }
 
@@ -309,7 +334,7 @@ const daysUntil = (iso) => { const d = new Date(iso); d.setHours(0, 0, 0, 0); co
 const whenText = (n) => n < 0 ? `просрочен на ${-n} ${plural(-n, "день", "дня", "дней")}` : n === 0 ? "сегодня" : n === 1 ? "завтра" : `через ${n} ${plural(n, "день", "дня", "дней")}`;
 const plural = (n, a, b, c) => { const m = n % 10, k = n % 100; return (k >= 11 && k <= 14) ? c : m === 1 ? a : (m >= 2 && m <= 4) ? b : c; };
 
-function feedBlock(prof, prod, active) {
+function feedCards(prof, prod, active) {
   const cards = [];
   // 1. Ближайший платёж по каждому действующему кредиту — главная карточка ленты
   for (const l of prof.loans) {
@@ -352,8 +377,72 @@ function feedBlock(prof, prod, active) {
       <p class="ftext">Компания в реестре МСП приоритетной отрасли: ставка от ${pct(pref.rate_from)} до ${rub(pref.max_amount)}.</p>
       <div class="facts"><button class="btn" data-act="new-app" data-product="preferential">Посмотреть условия</button></div></div></article>`);
   }
-  if (!cards.length) return "";
-  return h`<section class="feed" aria-label="Для вас"><div class="feed-track">${cards}</div></section>`;
+  return cards;
+}
+function feedBlock(prof, prod, active) {
+  const cards = feedCards(prof, prod, active);
+  return cards.length ? h`<section class="feed" aria-label="Для вас"><div class="feed-track">${cards}</div></section>` : "";
+}
+// единая лента «Для вас»: напоминания и предложения + новости и сервисы банка, автопрокрутка маятником
+const FEED_MAX = 6, FEED_OFFERS_MAX = 2;
+function industryOf(okved) {
+  const code = parseInt(String(okved || "").slice(0, 2), 10);
+  if (code === 62 || code === 63) return "it"; if (code === 56) return "catering"; if (code >= 41 && code <= 43) return "construction";
+  if (code >= 45 && code <= 47) return "trade"; if (code >= 49 && code <= 53) return "transport"; if (code >= 10 && code <= 33) return "production"; return "other";
+}
+function businessContext(prof, c) {
+  const tags = new Set(["any", industryOf(prof.company?.okved)]);
+  if (prof.tenure_months < 12) tags.add("young");
+  if (prof.loans.some((l) => !l.repaid)) tags.add("loan");
+  if (prof.msp) tags.add("msp");
+  if (c?.forecast?.base?.gap || c?.forecast?.gap) tags.add("gap");
+  if (tags.has("trade")) tags.add("retail");
+  return tags;
+}
+function pickNews(tags, n) {
+  const scored = BANK_NEWS.map((x, i) => ({ x, i, score: (x.tags || []).reduce((acc, t) => acc + (t === "any" ? 0.5 : tags.has(t) ? 3 : 0), 0) }));
+  scored.sort((a, b) => b.score - a.score || a.i - b.i);
+  const out = [], cats = {};
+  for (const sItem of scored) { if (out.length >= n) break; if ((cats[sItem.x.cat] || 0) >= 2) continue; cats[sItem.x.cat] = (cats[sItem.x.cat] || 0) + 1; out.push(sItem.x); }
+  return out;
+}
+function forYouBlock(prof, prod, active) {
+  const all = feedCards(prof, prod, active);
+  // уведомления (платёж, действие) — всегда; предложений (предодобрено, льготная) — не больше двух
+  const isOffer = (card) => /class="fcard(?: ok)?" data-key="(pre-|pref)/.test(card.s);
+  const notices = all.filter((cd) => !isOffer(cd)), offers = all.filter(isOffer).slice(0, FEED_OFFERS_MAX);
+  const cards = [...notices, ...offers].slice(0, FEED_MAX);
+  const tags = businessContext(prof, window.__client);
+  const picked = pickNews(tags, Math.max(0, FEED_MAX - cards.length));
+  const news = picked.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i + cards.length, 6)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`);
+  const why = [...tags].filter((t) => t !== "any" && t !== "retail").map((t) => ({ it: "ИТ", catering: "общепит", construction: "строительство", trade: "торговля", transport: "транспорт", production: "производство", other: "ваша отрасль", young: "молодой бизнес", loan: "действующий кредит", msp: "реестр МСП", gap: "риск кассового разрыва" }[t])).join(", ");
+  return h`<section class="feed foryou mb" aria-label="Для вас"><div class="row between wrapx feed-head"><div><h2 style="margin:0">Для вас</h2><span class="muted small">подобрано по профилю: ${why} · ${cards.length + news.length} из ${FEED_MAX}</span></div>
+      <div class="news-nav"><button class="btn sm" data-act="news-prev" aria-label="Назад">←</button><button class="btn sm" data-act="news-next" aria-label="Вперёд">→</button></div></div>
+    <div class="feed-track" data-news data-auto>${cards}${news}</div></section>`;
+}
+function initCarousels() {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  $$("[data-auto]:not([data-live])").forEach((t) => {
+    t.dataset.live = "1"; let dir = 1, pausedUntil = 0, hover = false, last = 0, pos = t.scrollLeft;
+    const pause = (ms = 6000) => { pausedUntil = performance.now() + ms; pos = t.scrollLeft; };
+    t.addEventListener("mouseenter", () => { hover = true; }); t.addEventListener("mouseleave", () => { hover = false; });
+    t.addEventListener("focusin", () => { hover = true; }); t.addEventListener("focusout", () => { hover = false; });
+    ["pointerdown", "touchstart", "wheel"].forEach((e) => t.addEventListener(e, () => pause(), { passive: true }));
+    t.closest(".feed")?.querySelectorAll("[data-act=news-prev],[data-act=news-next]").forEach((b) => b.addEventListener("click", () => pause(8000)));
+    const step = (ts) => {
+      if (!t.isConnected) return;
+      const dt = Math.min(50, ts - last); last = ts;
+      const maxX = t.scrollWidth - t.clientWidth;
+      if (maxX > 4 && !hover && ts > pausedUntil && !document.hidden) {
+        if (Math.abs(t.scrollLeft - pos) > 2) pos = t.scrollLeft;            // пользователь прокрутил сам — продолжаем оттуда
+        pos = Math.max(0, Math.min(maxX, pos + dir * 0.028 * dt));          // ≈ 28 px/с, дробная позиция копится отдельно
+        t.scrollLeft = pos;
+        if (dir > 0 && pos >= maxX - 1) { dir = -1; pause(1800); } else if (dir < 0 && pos <= 1) { dir = 1; pause(1800); }
+      }
+      requestAnimationFrame(step);
+    };
+    pause(2500); requestAnimationFrame(step);
+  });
 }
 
 // ---------- клиент: главная с разделами (Обзор · Кредиты · Новый кредит · Поступления) ----------
@@ -417,7 +506,7 @@ function clientSection(k, c) {
   // Обзор: лента, активная заявка, короткие плитки-ссылки в разделы
   const loan = prof.loans.find((l) => !l.repaid && l.next_payment), best = prof.preapproval.filter((p) => p.available).sort((x, y) => y.max_amount - x.max_amount)[0];
   const last = prof.receipts.length - 1, prev = prof.receipts[last - 1] || 0, dl = prev ? Math.round((prof.receipts[last] / prev - 1) * 100) : 0;
-  return h`${feedBlock(prof, prod, active)}${activeCard}
+  return h`${forYouBlock(prof, prod, active)}${activeCard}
     <div class="grid smart mb">${radarCard(c.forecast, prod)}${limitCard(c.limit, prod)}</div>
     <div class="tiles g4 mb">
       ${loan ? h`<a class="tile" href="#/client/loans"><span>Ближайший платёж</span><b data-count="${loan.next_payment.amount}">${rub(loan.next_payment.amount)}</b><span>до ${dateOnly(loan.next_payment.date)} · остаток ${rub(loan.outstanding)}</span></a>`
@@ -426,7 +515,6 @@ function clientSection(k, c) {
       <a class="tile" href="#/client/receipts"><span>Поступления, ${monthName(monthOf(last), false)}</span><b data-count="${prof.receipts[last]}">${rub(prof.receipts[last])}</b><span>${dl >= 0 ? "+" : ""}${dl} % к прошлому месяцу · среднее ${rub(prof.avg_receipts)}</span></a>
       <a class="tile" href="#/client/receipts"><span>Платёжная нагрузка</span><b>${prof.avg_receipts ? Math.round(prof.existing_payments / prof.avg_receipts * 100) : 0} %</b><span>платежи по кредитам ${rub(prof.existing_payments)} от среднего поступления</span></a>
     </div>
-    ${newsBlock()}
     ${apps.length && !active ? h`<div class="card flat"><div class="row between wrapx"><div><b>Последняя заявка</b><br><span class="muted small">${apps[0].product_title} · ${rub(apps[0].amount)} · ${dateOnly(apps[0].created)}</span></div>${chip(apps[0].status.code, apps[0].status.title)}</div></div>` : ""}`;
 }
 
@@ -434,37 +522,37 @@ let loanIdx = 0;
 
 // ---------- лента новостей и сервисов банка (требование кейса: «новостная лента под клиента») ----------
 const BANK_NEWS = [
-  { cat: "Новости", href: "https://alfabank.ru/corporate/news/", title: "Новости масштабного бизнеса", text: "Аналитика рынка и новости для вашего бизнеса первыми", tone: "blue" },
-  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/services/market_puls/", title: "Пульс рынка", text: "Сравните себя с конкурентами по данным эквайринга", tone: "mint" },
-  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/credit-holidays-mob/", title: "Кредитные каникулы", text: "Отсрочка платежей, если бизнесу нужна передышка", tone: "graphite" },
-  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/goscredit/", title: "Кредит с господдержкой", text: "Льготные ставки по программам субсидирования", tone: "red" },
-  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/sub/", title: "Подписки на кредитные продукты", text: "Скидка на ставку по овердрафту и кредитной линии", tone: "violet" },
-  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/business_insurance/", title: "Защита бизнеса", text: "Скидка на кредит 4,5 % и защита от непредвиденных расходов", tone: "graphite" },
-  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/alfastart/", title: "Альфа-Старт", text: "Финансирование для начинающего бизнеса", tone: "mint" },
-  { cat: "Финансирование", href: "https://alfabank.ru/sme/guarantee/client/", title: "Банковская гарантия", text: "Для контрактов и госзакупок без замораживания денег", tone: "blue" },
-  { cat: "Финансирование", href: "https://alfabank.ru/sme/profits/factoring/", title: "Факторинг", text: "Деньги за поставки сразу, не дожидаясь оплаты покупателя", tone: "red" },
-  { cat: "Финансирование", href: "https://alfaleasing.ru/", title: "Лизинг", text: "Техника и транспорт в лизинг от Альфа-Лизинга", tone: "graphite" },
-  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/services/check-contragent/", title: "Проверка контрагентов", text: "Риски партнёра до подписания договора", tone: "violet" },
-  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/bookkeeping/", title: "Альфа-Бухгалтерия", text: "Налоги и отчётность для ИП и ООО внутри банка", tone: "mint" },
-  { cat: "Сервис", href: "https://alfabank.ru/sme/alfaapi/", title: "Alfa API", text: "Интеграция банка с вашей ERP и учётом", tone: "blue" },
-  { cat: "Полезное", href: "https://alfabank.ru/sme/115fz/how-to-protect/", title: "Полезное о 115-ФЗ", text: "Как не попасть под блокировку счёта", tone: "red" },
-  { cat: "Сообщество", href: "https://alfabank.ru/sme/fond/", title: "Фонд немалого бизнеса", text: "Расскажите про бизнес и получите деньги на рекламу", tone: "graphite" },
-  { cat: "Сообщество", href: "https://alfabank.ru/sme/confa/", title: "Альфа-Конфа", text: "Масштабные события для бизнеса и предпринимателей", tone: "violet" },
-  { cat: "Обучение", href: "https://kurs.alfabank.ru/", title: "Бизнес-школа Альфа-Курс", text: "Курсы для предпринимателей от практиков", tone: "mint" },
-  { cat: "Обучение", href: "https://alfabank.ru/help/articles/sme/", title: "Полезные статьи для бизнеса", text: "Разборы, инструкции и кейсы для малого бизнеса", tone: "blue" },
-  { cat: "Сервис", href: "https://alfabank.ru/corporate/lab-robot/", title: "Лаборатория роботизации", text: "Считаем окупаемость, подбираем технологию и финансируем внедрение", tone: "graphite" },
-  { cat: "Направления", href: "https://alfabank.ru/corporate/china/", title: "Бизнес с Китаем", text: "Расчёты, закупки и сопровождение компаний, работающих с КНР", tone: "red" },
+  { cat: "Новости", href: "https://alfabank.ru/corporate/news/", title: "Новости масштабного бизнеса", text: "Аналитика рынка и новости для вашего бизнеса первыми", tone: "blue", tags: ["any"] },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/services/market_puls/", title: "Пульс рынка", text: "Сравните себя с конкурентами по данным эквайринга", tone: "mint", tags: ["trade", "catering", "retail"] },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/credit-holidays-mob/", title: "Кредитные каникулы", text: "Отсрочка платежей, если бизнесу нужна передышка", tone: "graphite", tags: ["loan"] },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/goscredit/", title: "Кредит с господдержкой", text: "Льготные ставки по программам субсидирования", tone: "red", tags: ["production", "it", "msp"] },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/sub/", title: "Подписки на кредитные продукты", text: "Скидка на ставку по овердрафту и кредитной линии", tone: "violet", tags: ["loan", "gap"] },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/business_insurance/", title: "Защита бизнеса", text: "Скидка на кредит 4,5 % и защита от непредвиденных расходов", tone: "graphite", tags: ["loan", "production", "transport"] },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/alfastart/", title: "Альфа-Старт", text: "Финансирование для начинающего бизнеса", tone: "mint", tags: ["young"] },
+  { cat: "Финансирование", href: "https://alfabank.ru/sme/guarantee/client/", title: "Банковская гарантия", text: "Для контрактов и госзакупок без замораживания денег", tone: "blue", tags: ["construction", "it", "tenders"] },
+  { cat: "Финансирование", href: "https://alfabank.ru/sme/profits/factoring/", title: "Факторинг", text: "Деньги за поставки сразу, не дожидаясь оплаты покупателя", tone: "red", tags: ["trade", "production"] },
+  { cat: "Финансирование", href: "https://alfaleasing.ru/", title: "Лизинг", text: "Техника и транспорт в лизинг от Альфа-Лизинга", tone: "graphite", tags: ["transport", "production", "construction"] },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/services/check-contragent/", title: "Проверка контрагентов", text: "Риски партнёра до подписания договора", tone: "violet", tags: ["trade", "construction", "young"] },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/bookkeeping/", title: "Альфа-Бухгалтерия", text: "Налоги и отчётность для ИП и ООО внутри банка", tone: "mint", tags: ["young", "it", "catering"] },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/alfaapi/", title: "Alfa API", text: "Интеграция банка с вашей ERP и учётом", tone: "blue", tags: ["it", "trade"] },
+  { cat: "Полезное", href: "https://alfabank.ru/sme/115fz/how-to-protect/", title: "Полезное о 115-ФЗ", text: "Как не попасть под блокировку счёта", tone: "red", tags: ["young", "trade"] },
+  { cat: "Сообщество", href: "https://alfabank.ru/sme/fond/", title: "Фонд немалого бизнеса", text: "Расскажите про бизнес и получите деньги на рекламу", tone: "graphite", tags: ["catering", "trade", "young"] },
+  { cat: "Сообщество", href: "https://alfabank.ru/sme/confa/", title: "Альфа-Конфа", text: "Масштабные события для бизнеса и предпринимателей", tone: "violet", tags: ["any"] },
+  { cat: "Обучение", href: "https://kurs.alfabank.ru/", title: "Бизнес-школа Альфа-Курс", text: "Курсы для предпринимателей от практиков", tone: "mint", tags: ["young"] },
+  { cat: "Обучение", href: "https://alfabank.ru/help/articles/sme/", title: "Полезные статьи для бизнеса", text: "Разборы, инструкции и кейсы для малого бизнеса", tone: "blue", tags: ["any"] },
+  { cat: "Сервис", href: "https://alfabank.ru/corporate/lab-robot/", title: "Лаборатория роботизации", text: "Считаем окупаемость, подбираем технологию и финансируем внедрение", tone: "graphite", tags: ["production"] },
+  { cat: "Направления", href: "https://alfabank.ru/corporate/china/", title: "Бизнес с Китаем", text: "Расчёты, закупки и сопровождение компаний, работающих с КНР", tone: "red", tags: ["trade", "production"] },
   // полезное для предпринимателей вне банка: господдержка, реестры, торги, регуляторика
-  { cat: "Господдержка", href: "https://мойбизнес.рф", title: "Мой бизнес", text: "Центры поддержки предпринимателей в регионах: консультации, обучение, льготы", tone: "mint", ext: true },
-  { cat: "Господдержка", href: "https://мсп.рф", title: "Цифровая платформа МСП.РФ", text: "Меры поддержки, льготное кредитование, сервисы для малого бизнеса", tone: "violet", ext: true },
-  { cat: "Господдержка", href: "https://corpmsp.ru", title: "Корпорация МСП", text: "Зонтичные поручительства и гарантии по кредитам для МСП", tone: "blue", ext: true },
-  { cat: "Реестры", href: "https://rmsp.nalog.ru", title: "Единый реестр МСП", text: "Проверьте, что компания в реестре — это условие льготных программ", tone: "graphite", ext: true },
-  { cat: "Реестры", href: "https://pb.nalog.ru", title: "ФНС «Прозрачный бизнес»", text: "Проверка себя и контрагентов: задолженность, адрес, руководитель", tone: "red", ext: true },
-  { cat: "Торги", href: "https://zakupki.gov.ru", title: "Госзакупки (ЕИС)", text: "Тендеры и контракты — под них банк даёт гарантии и кредит под контракт", tone: "blue", ext: true },
-  { cat: "Регуляторика", href: "https://cbr.ru/hd_base/KeyRate/", title: "Ключевая ставка Банка России", text: "От неё считается ваша ставка по кредиту", tone: "graphite", ext: true },
-  { cat: "Регуляторика", href: "https://честныйзнак.рф", title: "Честный знак", text: "Обязательная маркировка товаров: сроки и категории", tone: "mint", ext: true },
-  { cat: "Сервисы", href: "https://www.gosuslugi.ru", title: "Госуслуги для бизнеса", text: "Лицензии, разрешения, выписки и уведомления в одном окне", tone: "violet", ext: true },
-  { cat: "Платежи", href: "https://sbp.nspk.ru/business/", title: "СБП для бизнеса", text: "Приём оплаты по QR с низкой комиссией", tone: "red", ext: true },
+  { cat: "Господдержка", href: "https://мойбизнес.рф", title: "Мой бизнес", text: "Центры поддержки предпринимателей в регионах: консультации, обучение, льготы", tone: "mint", ext: true, tags: ["young", "msp"] },
+  { cat: "Господдержка", href: "https://мсп.рф", title: "Цифровая платформа МСП.РФ", text: "Меры поддержки, льготное кредитование, сервисы для малого бизнеса", tone: "violet", ext: true, tags: ["msp", "young"] },
+  { cat: "Господдержка", href: "https://corpmsp.ru", title: "Корпорация МСП", text: "Зонтичные поручительства и гарантии по кредитам для МСП", tone: "blue", ext: true, tags: ["msp", "production"] },
+  { cat: "Реестры", href: "https://rmsp.nalog.ru", title: "Единый реестр МСП", text: "Проверьте, что компания в реестре — это условие льготных программ", tone: "graphite", ext: true, tags: ["msp"] },
+  { cat: "Реестры", href: "https://pb.nalog.ru", title: "ФНС «Прозрачный бизнес»", text: "Проверка себя и контрагентов: задолженность, адрес, руководитель", tone: "red", ext: true, tags: ["trade", "construction"] },
+  { cat: "Торги", href: "https://zakupki.gov.ru", title: "Госзакупки (ЕИС)", text: "Тендеры и контракты — под них банк даёт гарантии и кредит под контракт", tone: "blue", ext: true, tags: ["construction", "it", "tenders"] },
+  { cat: "Регуляторика", href: "https://cbr.ru/hd_base/KeyRate/", title: "Ключевая ставка Банка России", text: "От неё считается ваша ставка по кредиту", tone: "graphite", ext: true, tags: ["loan", "any"] },
+  { cat: "Регуляторика", href: "https://честныйзнак.рф", title: "Честный знак", text: "Обязательная маркировка товаров: сроки и категории", tone: "mint", ext: true, tags: ["trade", "production"] },
+  { cat: "Сервисы", href: "https://www.gosuslugi.ru", title: "Госуслуги для бизнеса", text: "Лицензии, разрешения, выписки и уведомления в одном окне", tone: "violet", ext: true, tags: ["young"] },
+  { cat: "Платежи", href: "https://sbp.nspk.ru/business/", title: "СБП для бизнеса", text: "Приём оплаты по QR с низкой комиссией", tone: "red", ext: true, tags: ["catering", "trade", "retail"] },
 ];
 function newsBlock() {
   return h`<section class="news mb" aria-label="Новости и сервисы банка"><div class="row between wrapx"><div><h2 style="margin:0">Новости и сервисы банка</h2><span class="muted small">alfabank.ru и полезные ресурсы для бизнеса · ${BANK_NEWS.length} ссылок</span></div>
@@ -484,10 +572,10 @@ function radarChart(f) {
   const y = (v) => H - Math.max(0, v) / max * H, x = (i) => i * (bw + gap);
   const fx0 = x(factN), fw = 3 * (bw + gap) - gap;
   const avg = f.fact.reduce((a2, b2) => a2 + b2, 0) / f.fact.length;
-  return h`<svg class="chart rchart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления за 12 месяцев и прогноз на 3 месяца"><defs><linearGradient id="vgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a85ff"/><stop offset="1" stop-color="#5a3df0"/></linearGradient><linearGradient id="ggrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff4d"/><stop offset="1" stop-color="#8fd400"/></linearGradient></defs>
+  return h`<svg class="chart rchart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления за 12 месяцев и прогноз на 3 месяца"><defs><linearGradient id="vgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a85ff"/><stop offset="1" stop-color="#5a3df0"/></linearGradient><linearGradient id="ggrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff4d"/><stop offset="1" stop-color="#8fd400"/></linearGradient><linearGradient id="rgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6b5e"/><stop offset="1" stop-color="#d61f12"/></linearGradient></defs>
     <rect class="r-fzone" x="${fx0 - gap / 2}" y="0" width="${fw + gap}" height="${H}" rx="8"/>
     <line class="r-avg" x1="0" x2="${W}" y1="${y(avg)}" y2="${y(avg)}"/>
-    ${vals.map((v, i) => h`<g style="--i:${i}"><rect class="bar ${i >= factN ? "fc" : i === factN - 1 ? "now" : v < avg ? "low" : ""}" x="${x(i)}" y="${y(v)}" width="${bw.toFixed(1)}" height="${(H - y(v)).toFixed(1)}" rx="5"/>
+    ${vals.map((v, i) => h`<g style="--i:${i}"><rect class="bar ${i >= factN ? "fc" : i === factN - 1 ? "now" : (i + off > 0 && v < f.fact[i + off - 1] * 0.8) ? "drop" : v < avg ? "low" : ""}" x="${x(i)}" y="${y(v)}" width="${bw.toFixed(1)}" height="${(H - y(v)).toFixed(1)}" rx="5"/>
       ${i >= factN && f.months[i - factN].high ? h`<line class="r-band" x1="${x(i) + bw / 2}" x2="${x(i) + bw / 2}" y1="${y(f.months[i - factN].high)}" y2="${y(f.months[i - factN].low)}"/>` : ""}
       <text x="${x(i) + bw / 2}" y="${H + 15}" text-anchor="middle">${i < factN ? monthName(monthOf(i + off), false) : monthName(new Date(f.months[i - factN].month + "-01"), false) + "*"}</text></g>`)}
   </svg>`;
@@ -544,7 +632,7 @@ function radarCard(fs, prod) {
       <div class="row wrapx" style="gap:8px"><div class="ptabs scn" aria-label="Диапазон">${Object.entries(RADAR_RANGES).map(([k, [, t]]) => h`<button class="ptab ${k === radarRange ? "sel" : ""}" data-act="radar-range" data-k="${k}">${t}</button>`)}</div>
       <div class="ptabs scn" aria-label="Сценарий">${scn.map(([v, t]) => h`<button class="ptab ${v === radarScenario ? "sel" : ""}" data-act="radar-scn" data-v="${v}">${t}</button>`)}</div></div></div>
     ${radarChart(f)}
-    <div class="r-legend small muted"><span><i class="sw t"></i>поступления</span><span><i class="sw now"></i>текущий месяц</span><span><i class="sw tf"></i>прогноз* с коридором</span><span><i class="sw gd"></i>среднее за год ${rub(Math.round(f.fact.reduce((a2, b2) => a2 + b2, 0) / 12))}</span></div>
+    <div class="r-legend small muted"><span><i class="sw t"></i>поступления</span><span><i class="sw now"></i>текущий месяц</span><span><i class="sw drop"></i>падение ≥ 20 % к прошлому месяцу</span><span><i class="sw tf"></i>прогноз* с коридором</span><span><i class="sw gd"></i>среднее за год ${rub(Math.round(f.fact.reduce((a2, b2) => a2 + b2, 0) / 12))}</span></div>
     <div class="r-sub"><b>Остаток на счёте, 90 дней</b> <span class="muted small">· сейчас ${rub(f.balance)} · минимум ${rub(Math.min(...f.path.map((p) => p.balance)))}</span></div>
     ${balanceChart(f, fs)}
     <div class="r-legend small muted"><span><i class="sw g"></i>остаток — ${scn.find(([v]) => v === radarScenario)[1].toLowerCase()}</span><span><i class="sw thin"></i>два других сценария</span><span><i class="sw gd"></i>подушка — месяц обязательных платежей</span><span><i class="sw r"></i>платежи по кредитам</span></div>
@@ -602,7 +690,7 @@ function prepayCalc(l) {
     <p class="hint">Расчёт по аннуитетной формуле без комиссий, не оферта. Досрочное погашение оформляется заявлением — в прототипе операция не выполняется.</p></details>`;
 }
 const prepayAmt = {};
-function repaintSection() { const box = $("#ctab"); if (!box || !window.__client) return; box.innerHTML = clientSection(clientTab, window.__client).s; animateCounts(box); }
+function repaintSection() { const box = $("#ctab"); if (!box || !window.__client) return; box.innerHTML = clientSection(clientTab, window.__client).s; animateCounts(box); initCarousels(); }
 
 // уведомления внутри продукта: напоминание о платеже + события по заявкам (без SMS и email)
 function buildNotifs(c) {
@@ -641,6 +729,7 @@ async function viewClient(tab = "overview") {
       <span class="chip">Ключевая ставка ${pct(prof.key_rate)}</span></div>
     <nav class="ptabs client-tabs" aria-label="Разделы кабинета">${CLIENT_TABS.map(([k, t]) => h`<a class="ptab ${k === clientTab ? "sel" : ""}" href="#/client/${k}" data-act="client-tab" data-k="${k}">${t}${k === "loans" && active ? raw('<span class="cnt hot">1</span>') : ""}</a>`)}</nav></div>
     <div id="ctab" data-tab="${clientTab}">${clientSection(clientTab, window.__client)}</div></main>`);
+  initCarousels();
 }
 
 // ---------- клиент: новая заявка ----------
@@ -1076,12 +1165,12 @@ const act = {
     history.pushState(null, "", el.getAttribute("href")); lastHash = location.hash;
     $$(".client-tabs .ptab").forEach((b) => b.classList.toggle("sel", b === el));
     const box = $("#ctab"); box.classList.add("swap");
-    setTimeout(() => { box.innerHTML = clientSection(clientTab, window.__client).s; box.dataset.tab = clientTab; animateCounts(box); box.classList.remove("swap"); box.classList.add("in"); setTimeout(() => box.classList.remove("in"), 900); }, 260);
+    setTimeout(() => { box.innerHTML = clientSection(clientTab, window.__client).s; box.dataset.tab = clientTab; animateCounts(box); initCarousels(); box.classList.remove("swap"); box.classList.add("in"); setTimeout(() => box.classList.remove("in"), 900); }, 260);
   },
   "feed-dismiss": (el) => {
     try { localStorage.setItem("feed:" + el.dataset.key, todayKey()); } catch { /* приватный режим */ }
     const card = el.closest(".fcard"), track = card?.parentElement; if (!card) return;
-    card.classList.add("gone"); setTimeout(() => { card.remove(); if (track && !track.children.length) track.closest(".feed")?.remove(); }, 450);
+    card.classList.add("gone"); setTimeout(() => { card.remove(); if (track && !track.children.length) track.closest(".feed")?.remove(); else if (track) { const n = track.querySelectorAll(".fcard").length; const sub = track.closest(".feed")?.querySelector(".feed-head .muted"); if (sub) sub.textContent = (n ? plural(n, "уведомление", "уведомления", "уведомлений") + " · " : "") + "новости и сервисы банка · " + BANK_NEWS.length; } }, 450);
   },
   "role-tab": (el) => { $$(".ptab").forEach((b) => b.classList.toggle("sel", b === el)); $$(".role-group").forEach((g) => { g.hidden = g.dataset.group !== el.dataset.k; }); animateCounts(root()); },
   "scroll-roles": (el, e) => { e?.preventDefault?.(); document.getElementById("roles")?.scrollIntoView({ behavior: "smooth", block: "start" }); },
