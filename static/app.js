@@ -90,6 +90,7 @@ function render(view) {
     const r = root();
     r.classList.remove("enter", "leaving"); void r.offsetWidth;
     r.querySelectorAll(".acc, .card, .tile, .prod, .roles h2").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
+    r.querySelectorAll(".bars .fill, table.t tbody tr").forEach((el, i) => el.style.setProperty("--j", Math.min(i, 24)));
     r.classList.add("enter");
     clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 2000);
     animateCounts(r);
@@ -471,8 +472,8 @@ async function viewBank() {
   const filt = { all: () => true, manual: (a) => a.status === "MANUAL_REVIEW", client: (a) => a.turn === "client", bank: (a) => a.turn === "bank", done: (a) => ["DISBURSED", "DECLINED", "WITHDRAWN", "EXPIRED"].includes(a.status) };
   const rows = apps.filter(filt[bankFilter]).sort((x, y) => (y.status === "MANUAL_REVIEW") - (x.status === "MANUAL_REVIEW") || new Date(y.updated) - new Date(x.updated));
   render(h`${raw(topbar())}<main class="wrap"><h1>Очередь заявок</h1>
-    <div class="tiles mb"><div class="tile"><b>${st.total}</b><span>всего заявок</span></div><div class="tile"><b>${st.manual_queue}</b><span>на ручном разборе</span></div>
-      <div class="tile"><b>${st.waiting_client}</b><span>ждут клиента</span></div><div class="tile"><b>${st.disbursed}</b><span>выдано</span></div><div class="tile"><b>${st.declined}</b><span>отказано</span></div></div>
+    <div class="tiles mb"><div class="tile"><b data-count="1">${st.total}</b><span>всего заявок</span></div><div class="tile ${st.manual_queue ? "hot" : ""}"><b data-count="1">${st.manual_queue}</b><span>на ручном разборе</span></div>
+      <div class="tile"><b data-count="1">${st.waiting_client}</b><span>ждут клиента</span></div><div class="tile"><b data-count="1">${st.disbursed}</b><span>выдано</span></div><div class="tile"><b data-count="1">${st.declined}</b><span>отказано</span></div></div>
     ${admin ? h`<details class="card mb"><summary><b>Пульт стенда</b> <span class="muted small">— ключевая ставка, режим БКИ, скорость конвейера, сброс данных</span></summary>
       <div class="grid g4 mt"><div class="field"><label for="kr">Ключевая ставка, %</label><input id="kr" type="number" step="0.25" value="${settings.key_rate}"></div>
         <div class="field"><label for="bm">БКИ</label><select id="bm"><option value="ok" ${settings.bureau_mode === "ok" ? "selected" : ""}>Работает</option><option value="down" ${settings.bureau_mode === "down" ? "selected" : ""}>Сбой (таймаут)</option></select></div>
@@ -481,9 +482,10 @@ async function viewBank() {
       <p class="small muted">Источник PD для каскада: <b>${settings.ml.source === "ml" ? "ML-модель " + settings.ml.version : "скоркарта (обученной модели нет — запасной режим)"}</b></p>
       <button class="btn primary sm" data-act="save-settings">Применить</button> 
       <button class="btn danger sm" data-act="reset">Сбросить демо-данные</button></details>` : ""}
-    <div class="row wrapx mb">${[["all", "Все"], ["manual", "Ручной разбор"], ["client", "Ждём клиента"], ["bank", "В работе у банка"], ["done", "Завершённые"]].map(([k, t]) =>
-      h`<button class="chip ${bankFilter === k ? "accent" : ""}" style="border:1px solid var(--line);cursor:pointer;padding:6px 14px" data-act="filter" data-k="${k}">${t}</button>`)}</div>
-    <div class="card scroll" style="padding:8px 12px"><table class="t"><thead><tr><th>Заявка</th><th>Клиент</th><th>Продукт</th><th class="right">Сумма / срок</th><th>Этап</th><th>Ход</th><th>Оценка</th><th>Обновлено</th></tr></thead><tbody>
+    <div class="ftabs mb">${[["all", "Все"], ["manual", "Ручной разбор"], ["client", "Ждём клиента"], ["bank", "В работе у банка"], ["done", "Завершённые"]].map(([k, t]) => {
+      const n = apps.filter(filt[k]).length;
+      return h`<button class="ftab ${bankFilter === k ? "sel" : ""}" data-act="filter" data-k="${k}">${t}<span class="cnt ${k === "manual" && n ? "hot" : ""}">${n}</span></button>`; })}</div>
+    <div class="card scroll" style="padding:4px 12px 8px"><table class="t queue"><thead><tr><th>Заявка</th><th>Клиент</th><th>Продукт</th><th class="right">Сумма / срок</th><th>Этап</th><th>Ход</th><th>Оценка</th><th>Обновлено</th></tr></thead><tbody>
     ${rows.length ? rows.map((a) => h`<tr class="click ${a.status === "MANUAL_REVIEW" ? "focus" : ""}" data-act="open-bank" data-id="${a.id}">
       <td><b>${a.id}</b></td><td>${a.client}<br><span class="muted small">ИНН ${a.inn}</span></td><td>${a.product_title}</td><td class="right num">${rub(a.amount)}<br><span class="muted small">${a.term} мес.</span></td>
       <td>${chip(a.status, a.status_title)}</td><td>${{ client: "Клиент", bank: "Банк", none: "—" }[a.turn]}</td>
@@ -543,7 +545,7 @@ async function viewBankApp(id, silent) {
     <div class="cols"><div>
       <div class="card"><div class="row between wrapx"><h2>Скоринг и решение системы</h2>${dec.grade ? h`<span class="chip">версия карты ${dec.scorecard_version} · политика ${dec.policy_version}</span>` : ""}</div>
         ${dec.stops?.length ? h`<div class="notice bad mb"><b>Сработали стоп-правила:</b> ${dec.stops.map((x) => x.id + " — " + x.text).join("; ")}. Скоринг не рассчитывался.</div>` : ""}
-        ${dec.score != null ? h`<div class="row wrapx mb" style="gap:24px"><div><div class="scorebig">${dec.score}</div><div class="muted small">баллов из 100</div></div>
+        ${dec.score != null ? h`<div class="row wrapx mb" style="gap:24px"><div><div class="scorebig" data-count="1">${dec.score}</div><div class="muted small">баллов из 100</div></div>
           <div><span class="grade ${dec.grade}" style="width:40px;height:40px;font-size:20px;border-radius:12px">${dec.grade}</span><div class="muted small">грейд · PD ≈ ${dec.pd} %</div></div>
           <div><b>Решение системы:</b> ${{ approve: "одобрить как запрошено", counter: "встречное предложение", manual: "ручной разбор", decline: "отказ" }[dec.outcome]}
             ${dec.partial ? h`<div class="chip warn mt">Частичный скоринг: БКИ недоступно</div>` : ""}</div></div>
@@ -566,7 +568,7 @@ async function viewBankApp(id, silent) {
         <dt>Руководитель</dt><dd>${ci.director}</dd><dt>Регистрация</dt><dd>${dateOnly(ci.registered)} · ${ci.tax_regime}</dd><dt>Запрос</dt><dd>${d.product_title}, ${rub(req.amount)}, ${req.term} мес.</dd>
         <dt>Цель</dt><dd>${req.purpose_text || req.purpose || "—"}</dd><dt>Согласия</dt><dd>${d.consents ? "ПДн, БКИ, ФНС — " + dt(d.consents.at) : "—"}</dd></dl></div>
     </div><div>
-      ${d.can_decide ? h`<div class="card" style="border-color:var(--info)"><h2>Решение аналитика</h2>
+      ${d.can_decide ? h`<div class="card decide"><h2>Решение аналитика</h2>
         <div class="field"><label for="act">Действие</label><select id="act"><option value="approve">Одобрить / изменить условия</option><option value="request_docs">Запросить документы</option><option value="decline">Отказать</option></select></div>
         <div id="f-approve"><div class="grid g2"><div class="field"><label for="d_amt">Сумма, ₽</label><input id="d_amt" type="number" step="50000" value="${rec ? rec.amount : req.amount}"></div>
           <div class="field"><label for="d_trm">Срок, мес.</label><input id="d_trm" type="number" value="${rec ? rec.term : req.term}"></div></div>
@@ -578,7 +580,7 @@ async function viewBankApp(id, silent) {
         <span class="${e.vis === "bank" ? "bankonly" : ""}">${e.message}</span>${e.from ? h` <span class="muted small">(${e.from} → ${e.to})</span>` : ""}</li>`)}</ul>
         <p class="hint">Синим — события, которые клиент не видит.</p></div>
     </div></div></main>`);
-  syncDecisionForm();
+  syncDecisionForm(); animateCounts(root());
   if (!silent) { stopPoll(); poll = setInterval(() => viewBankApp(id, true).catch(() => {}), 3000); }
 }
 function syncDecisionForm() {
