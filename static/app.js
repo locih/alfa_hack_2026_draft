@@ -164,7 +164,7 @@ async function viewLogin() {
       <h1>Кредит для бизнеса без лишних шагов</h1>
       <p class="lead">Подбор продукта по задаче, заявка за три минуты, живой статус и понятное решение. Для банка — та же заявка, скоринг по факторам и ручной разбор в одном окне.</p>
       <div class="tags"><span class="chip accent">Прототип · Альфа-Будущее Хакатон 2026</span><span class="chip">Данные синтетические</span><span class="chip">БКИ, ЕГРЮЛ, ФНС — моки</span></div>
-      <div class="hero-art" aria-hidden="true"><img src="img/hero-3d.webp" alt="" width="1400" height="1050" decoding="async"></div>
+      <div class="hero-3d" id="hero3d" aria-hidden="true"><img class="hero-fallback" src="img/hero-3d.webp" alt="" width="1400" height="1050" decoding="async"></div>
     </div>
     <div class="roles">
       ${d ? h`<h2>Клиенты</h2>${clients.map(acc)}<h2>Банк</h2>${bank.map(acc)}` : h`<div class="notice plate mb">Демо-режим выключен. Войдите под своей учётной записью.</div>`}
@@ -176,6 +176,15 @@ async function viewLogin() {
           ${d ? h`<p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p>` : ""}</form></details>
       <p class="foot">Подписание и выдача имитируются, реальных операций нет. Учебный прототип команды, не сервис банка.</p>
     </div></div>`);
+  mountHero();
+}
+let heroDispose = null;
+function mountHero() {
+  const box = document.getElementById("hero3d"); if (!box) return;
+  if (heroDispose) { heroDispose(); heroDispose = null; }
+  const gl = (() => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; } })();
+  if (!gl) return;
+  import("./hero3d.js").then((m) => { if (!document.getElementById("hero3d")) return; heroDispose = m.mount(box); box.classList.add("live"); }).catch((e) => console.warn("3D-сцена не загрузилась, показываем картинку", e));
 }
 async function doLogin(login, password) {
   try {
@@ -354,6 +363,27 @@ function refreshQuote() {
 }
 
 // ---------- клиент: заявка ----------
+// полноэкранный момент выдачи: один раз на заявку в этой вкладке
+function showIssued(a) {
+  const key = "issued-shown-" + a.id;
+  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch { /* приватный режим */ }
+  document.getElementById("issued-overlay")?.remove();
+  const el = document.createElement("div"); el.id = "issued-overlay"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Кредит выдан");
+  el.innerHTML = h`<div class="iss-glow"></div>
+    <div class="iss-body">
+      <svg class="iss-check" viewBox="0 0 120 120" aria-hidden="true"><circle class="iss-ring" cx="60" cy="60" r="54"/><path class="iss-tick" d="M34 62 L52 80 L88 42"/></svg>
+      <h1>Кредит выдан!</h1>
+      <p class="iss-sum">${rub(a.contract?.amount ?? a.offer?.amount ?? a.amount)} уже на вашем расчётном счёте</p>
+      <p class="iss-sub">${a.contract?.first_payment ? h`Первый платёж ${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}` : "График платежей и договор — в карточке кредита"}</p>
+      <button class="btn primary" data-act="issued-close">Смотреть график платежей</button>
+    </div>`.s;
+  document.body.appendChild(el); document.body.classList.add("iss-open");
+  const close = () => { el.classList.add("out"); document.body.classList.remove("iss-open"); setTimeout(() => el.remove(), 500); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  el.addEventListener("click", (e) => { if (e.target.closest("[data-act=issued-close]") || e.target === el) close(); });
+  document.addEventListener("keydown", onKey);
+  setTimeout(close, 9000);
+}
 let lastSig = "";
 async function viewApp(id) {
   const a = await api("/client/applications/" + id);
@@ -362,6 +392,7 @@ async function viewApp(id) {
   if (sig === lastSig && $("#appview")) return;
   lastSig = sig;
   paintApp(a);
+  if (a.status.code === "DISBURSED" && !a.loan?.repaid) showIssued(a);
   stopPoll();
   if (!a.status.terminal) poll = setInterval(() => viewApp(id).catch(() => {}), a.status.transient ? 1200 : 3000);
 }
@@ -440,7 +471,7 @@ function paintApp(a) {
       <button class="btn primary" data-act="sign">Подписать договор</button></div>`;
   }
   if (good) {
-    ctx = h`<div class="card mt issued"><img class="issued-art" src="img/success-3d.webp" alt="" width="1400" height="1050" decoding="async"><h2>${a.loan?.repaid ? "Кредит погашен" : "Кредит выдан"}</h2><dl class="kv">
+    ctx = h`<div class="card mt issued"><h2>${a.loan?.repaid ? "Кредит погашен" : "Кредит выдан"}</h2><dl class="kv">
       <dt>Договор</dt><dd>${a.contract.number} от ${dateOnly(a.contract.date)}</dd><dt>Сумма</dt><dd class="num">${rub(a.contract.amount)}</dd>
       <dt>Зачислено на счёт</dt><dd class="num">${a.contract.account}</dd><dt>Ставка</dt><dd>${pct(a.contract.rate)}</dd>
       ${a.contract.first_payment ? h`<dt>Первый платёж</dt><dd class="num">${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}</dd>` : ""}</dl>
@@ -707,6 +738,6 @@ document.addEventListener("change", (e) => {
   if (el.dataset.bindC && draft) { draft.consents[el.dataset.bindC] = el.checked; const b = $('[data-act="submit-app"]'); if (b) b.disabled = !(draft.consents.pd && draft.consents.bureau && draft.consents.fns); }
   if (el.id === "act") syncDecisionForm();
 });
-window.addEventListener("hashchange", () => { stopPoll(); root().classList.add("leaving"); route(); });
+window.addEventListener("hashchange", () => { stopPoll(); if (heroDispose) { heroDispose(); heroDispose = null; } root().classList.add("leaving"); route(); });
 route();
 })();
