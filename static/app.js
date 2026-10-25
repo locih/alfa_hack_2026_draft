@@ -114,7 +114,7 @@ function topbar(extra = "") {
   return h`<header class="topbar"><div class="in">
     <a class="brand" href="#/${bank ? "bank" : "client"}"><i></i><span>${bank ? "Рабочее место банка" : "Кредитный кабинет"} <small>· МСБ</small></span></a>
     ${raw(extra)}<span class="spacer"></span>
-    <div class="who"><b>${u.name}</b><span class="muted small">${bank ? (u.role === "admin" ? "администратор стенда" : "кредитный аналитик") : "Демо-данные"}</span></div>
+    <a class="who" href="#/${bank ? "bank" : "client"}" title="${bank ? "Перейти в очередь заявок" : "Перейти в личный кабинет"}"><b>${u.name}</b><span class="muted small">${bank ? (u.role === "admin" ? "администратор стенда" : "кредитный аналитик") : "Личный кабинет"} →</span></a>
     <button class="btn sm" data-act="logout">Выйти</button></div></header>`.s;
 }
 

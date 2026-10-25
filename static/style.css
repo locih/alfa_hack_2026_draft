@@ -33,7 +33,8 @@ button { font: inherit; cursor: pointer; }
 .brand i::after { content: ""; position: absolute; left: 7px; top: 7px; width: 14px; height: 14px; border: 2.5px solid #fff; border-width: 2.5px 0 0 2.5px; transform: rotate(45deg) scale(.8); transform-origin: center; top: 9px; }
 .brand small { font-weight: 500; color: var(--muted); }
 .spacer { flex: 1; }
-.who { text-align: right; line-height: 1.25; } .who b { display: block; font-size: 14px; }
+.who { text-align: right; line-height: 1.25; color: var(--ink); text-decoration: none; padding: 6px 10px; border-radius: 10px; } .who b { display: block; font-size: 14px; }
+.who:hover { background: var(--soft); text-decoration: none; } .who:hover b { text-decoration: underline; }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 64px; }
 .grid { display: grid; gap: 16px; } .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
 .cols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
