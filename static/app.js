@@ -75,6 +75,13 @@ function animateCounts(scope) {
   });
 }
 let lastHash = null;
+// тема: тёмная по умолчанию (атрибут в index.html), выбор пользователя хранится локально
+const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const themeNow = () => document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+function applyTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem("theme", t); } catch { /* приватный режим */ } $$(".theme-btn").forEach((b) => { b.innerHTML = t === "dark" ? SUN : MOON; b.title = t === "dark" ? "Светлая тема" : "Тёмная тема"; }); }
+try { const t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch { /* приватный режим */ }
+const themeBtn = () => raw(`<button class="theme-btn" data-act="theme" aria-label="Переключить тему" title="${themeNow() === "dark" ? "Светлая тема" : "Тёмная тема"}">${themeNow() === "dark" ? SUN : MOON}</button>`);
 function render(view) {
   const keep = {};
   root().querySelectorAll("[id]").forEach((el) => { if ("value" in el) keep[el.id] = { v: el.value, c: el.checked, f: el === document.activeElement }; });
@@ -148,7 +155,7 @@ function topbar(extra = "") {
   const bank = u.role !== "client";
   return h`<header class="topbar"><div class="in">
     <a class="brand" href="#/${bank ? "bank" : "client"}"><i></i><span>${bank ? "Рабочее место банка" : "Кредитный кабинет"} <small>· МСБ</small></span></a>
-    ${raw(extra)}<span class="spacer"></span>
+    ${raw(extra)}<span class="spacer"></span>${themeBtn()}
     ${bank ? "" : h`<button class="bell" data-act="notif" aria-label="Уведомления" aria-haspopup="dialog">${BELL}${notifUnread() ? h`<span class="nbadge">${notifUnread()}</span>` : ""}</button>`}
     <a class="who" href="#/${bank ? "bank" : "client"}" title="${bank ? "Перейти в очередь заявок" : "Перейти в личный кабинет"}"><b>${u.name}</b><span class="muted small">${bank ? (u.role === "admin" ? "администратор стенда" : "кредитный аналитик") : "Личный кабинет"} →</span></a>
     <button class="btn sm" data-act="logout">Выйти</button></div></header>`.s;
@@ -162,12 +169,14 @@ async function viewLogin() {
   const users = d ? d.users : [];
   const av = (n) => n.replace(/[«»"]/g, "").split(" ").filter((w) => w.length > 1).slice(0, 2).map((w) => w[0]).join("");
   const arrow = h`<svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 5.5 20 12l-6.5 6.5-1.4-1.4 4.1-4.1H4v-2h12.2l-4.1-4.1 1.4-1.4z"/></svg>`;
-  const acc = (u) => h`<button class="rcard ${u.role === "client" ? "" : "bank"}" data-act="demo-login" data-login="${u.login}">
-      <span class="av">${av(u.name)}</span><b>${u.name}</b><small>${u.hint}</small><span class="go">Войти ${arrow}</span></button>`;
-  const clients = users.filter((u) => u.role === "client"), bank = users.filter((u) => u.role !== "client");
+  const acc = (u, i) => h`<button class="rcard ${u.role === "client" ? "" : "bank"} ${u.login === "lesnoy" ? "first" : ""}" data-act="demo-login" data-login="${u.login}">
+      ${u.login === "lesnoy" ? raw('<span class="chip accent start">Начните отсюда</span>') : ""}
+      <span class="av">${av(u.name)}</span><b>${u.name}</b><small>${u.login === "lesnoy" ? "Главный сценарий: банк не говорит «нет», а предлагает условия, при которых будет «да» — и объясняет почему" : u.hint}</small><span class="go">Войти ${arrow}</span></button>`;
+  const ORDER = ["lesnoy", "sever", "gromov", "stroy"];            // первым — сценарий со встречным предложением: главная идея продукта
+  const clients = users.filter((u) => u.role === "client").sort((a, b) => (ORDER.indexOf(a.login) + 1 || 99) - (ORDER.indexOf(b.login) + 1 || 99)), bank = users.filter((u) => u.role !== "client");
   render(h`<div class="landing">
     <header class="hero-dark"><div class="in">
-      <div class="login-mark light"><i></i><span>Кредитный кабинет <small>· малый бизнес</small></span></div>
+      <div class="row between"><div class="login-mark light"><i></i><span>Кредитный кабинет <small>· малый бизнес</small></span></div><span class="theme-wrap light">${themeBtn()}</span></div>
       <div class="hero-grid">
         <div class="hero-text">
           <h1>Кредит для бизнеса без лишних шагов</h1>
@@ -890,6 +899,7 @@ const act = {
   "prepay-amt": () => {},
   "notif": () => { const p = $("#notif-panel"); if (p) return p.remove(); document.body.insertAdjacentHTML("beforeend", notifPanel().s); try { localStorage.setItem("notif-seen", new Date().toISOString()); } catch { /* приватный режим */ } $(".bell .nbadge")?.remove(); },
   "notif-close": () => $("#notif-panel")?.remove(),
+  "theme": () => applyTheme(themeNow() === "dark" ? "light" : "dark"),
   "notif-go": (el) => { $("#notif-panel")?.remove(); location.hash = el.getAttribute("href"); },
   "client-tab": (el, ev) => {
     if (!window.__client || !el.dataset.k || el.dataset.k === clientTab) { ev?.preventDefault?.(); return; }

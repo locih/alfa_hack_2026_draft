@@ -572,3 +572,12 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .ntf .nd { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--info-fill); }
 .ntf.pay .nd { background: var(--accent); } .ntf.need .nd { background: var(--accent); } .ntf.done .nd { background: var(--ok-fill); }
 .faint { color: var(--faint); }
+
+/* переключатель темы и порядок демо */
+.theme-btn { border: 0; background: var(--soft); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); cursor: pointer; margin-right: 10px; transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.theme-btn:hover { background: var(--line); } .theme-btn:active { transform: rotate(20deg); } .theme-btn svg { width: 18px; height: 18px; }
+.theme-wrap.light .theme-btn { background: rgba(255,255,255,.1); color: #fff; margin: 0 0 56px; } .theme-wrap.light .theme-btn:hover { background: rgba(255,255,255,.2); }
+.rcard { position: relative; } .rcard.first { box-shadow: 0 0 0 2px var(--accent) inset; }
+.rcard .start { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); }
+.rcard.first .av { margin-top: 18px; }
+@media (max-width: 900px) { .theme-wrap.light .theme-btn { margin-bottom: 28px; } }
