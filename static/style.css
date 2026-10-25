@@ -370,7 +370,11 @@ table.t tr.focus td { background: var(--warn-soft); }
 .rcard .go { display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; color: var(--accent); font-weight: 600; font-size: 14px; }
 .rcard .go svg { width: 18px; height: 18px; transition: transform 0.562s var(--ease); } .rcard:hover .go svg { transform: translateX(3px); }
 .login-form { margin-top: 32px; } .login-form summary { color: var(--muted); font-size: 14px; cursor: pointer; }
-.login-form form { max-width: 420px; }
+.login-form form { max-width: 460px; background: #0f0f10; color: #fff; border-radius: 24px; padding: 24px; animation: rise .9s var(--ease) both; }
+.login-form form label { color: rgba(255,255,255,.7); }
+.login-form form input { background: #fff; color: var(--ink); border-color: transparent; }
+.login-form form input:hover { background: #fff; } .login-form form input:focus { background: #fff; box-shadow: 0 0 0 3px rgba(34,136,250,.45); }
+.login-form form .hint { color: rgba(255,255,255,.55); } .login-form form code { background: rgba(255,255,255,.12); color: #fff; padding: 1px 6px; border-radius: 6px; }
 .sheet .foot { margin-top: 28px; font-size: 13px; color: var(--faint); }
 #app.enter .hero-text > * { animation: rise 1.8s var(--ease) both; }
 @keyframes digit-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
