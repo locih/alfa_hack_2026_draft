@@ -176,7 +176,7 @@ details > summary { cursor: pointer; }
 
 
 /* страница заявки */
-.status.card h1 { font-size: 24px; margin: 10px 0 6px; animation: rise 1.12s var(--ease) both; }
+.status.card h1 { font-size: 24px; margin: 10px 0 6px; animation: fade-in .9s var(--ease) both; }
 .status.card > .row .chip { animation: fade-in 1.35s var(--ease) both; }
 .hints > div { border-radius: var(--radius-xs); padding: 12px 14px; background: var(--soft); transition: background 0.675s var(--ease); }
 .hints > div.need { background: var(--accent-soft); border: 1px solid rgba(239,49,36,.22); }
@@ -420,6 +420,8 @@ table.ops td { padding: 12px 10px; }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 #app.leaving > .wrap, #app.leaving > .login { opacity: .4; transform: translateY(-4px); transition: opacity 0.675s var(--ease-io), transform 0.675s var(--ease-io); }
+#app > .wrap { transition: opacity .45s var(--ease-io); }
+#app.swap > .wrap { opacity: .45; }
 #app.enter > .wrap, #app.enter > .login { animation: view-in 1.12s var(--ease) both; }
 #app.enter .cascade { animation: rise 1.35s var(--ease) both; animation-delay: calc(var(--i, 0) * 123ms); }
 #app.enter .login-hero > * { animation: rise 1.58s var(--ease) both; }

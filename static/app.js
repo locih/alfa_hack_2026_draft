@@ -459,7 +459,12 @@ async function viewApp(id) {
   const sig = a.id + a.status.code + a.events.length + a.updated + (a.account ? a.account.balance : "");
   if (sig === lastSig && $("#appview")) return;
   lastSig = sig;
-  paintApp(a);
+  if (!$("#appview")) paintApp(a);
+  else {  // смена статуса без мигания: приглушить, подменить, проявить
+    const r = root(); r.classList.add("swap");
+    await new Promise((res) => setTimeout(res, 320));
+    paintApp(a, true); requestAnimationFrame(() => requestAnimationFrame(() => r.classList.remove("swap")));
+  }
   if (a.status.code === "DISBURSED" && !a.loan?.repaid) showIssued(a);
   stopPoll();
   if (!a.status.terminal) poll = setInterval(() => viewApp(id).catch(() => {}), a.status.transient ? 1200 : 3000);
@@ -508,7 +513,7 @@ function scheduleTable(a) {
     <button class="btn sm mt" data-act="csv">Скачать CSV</button></details>`;
 }
 
-function paintApp(a) {
+function paintApp(a, silent = false) {
   window.__app = a;
   const s = a.status, code = s.code;
   const good = code === "DISBURSED", bad = code === "DECLINED";
@@ -551,7 +556,7 @@ function paintApp(a) {
     ctx = h`${ctx}${scheduleTable(a)}`;
   }
   const tl = [...a.events].reverse();
-  setTimeout(() => animateCounts(root()), 0);
+  if (!silent) setTimeout(() => animateCounts(root()), 0);
   render(h`${raw(topbar())}<main class="wrap" id="appview"><a href="#/client" class="small">← Главная</a>
     <div class="row between wrapx mt mb"><div><h1>${a.product_title}</h1><div class="muted">${a.id} · ${rub(a.amount)}${a.product === "overdraft" ? " лимит" : " на " + a.term + " мес."} · подана ${dt(a.created)}</div></div></div>
     <div class="cols"><div>
