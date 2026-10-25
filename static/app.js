@@ -64,13 +64,13 @@ function logout(silent) {
 function stopPoll() { if (poll) { clearInterval(poll); poll = null; } }
 
 // ---------- рендер ----------
+// суммы: цифры «прилетают» слева направо один раз при входе на экран (без счётчиков)
 function animateCounts(scope) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  scope.querySelectorAll("[data-count]").forEach((el, i) => {
-    const to = +el.dataset.count, pre = el.dataset.prefix || "", from = +(el.dataset.from || 0), t0 = performance.now() + 200 + i * 70, dur = 900;
-    const fmt = el.dataset.fmt === "pct" ? pct : rub;
-    const step = (t) => { const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 3); el.textContent = pre + fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
-    requestAnimationFrame(step);
+  scope.querySelectorAll("[data-count]:not([data-animated])").forEach((el, i) => {
+    el.dataset.animated = "1";
+    const text = el.textContent; let k = 0;
+    el.innerHTML = Array.from(text).map((ch) => ch.trim() === "" ? ch : `<span class="d" style="--k:${k++};--g:${i}">${esc(ch)}</span>`).join("");
   });
 }
 let lastHash = null;
@@ -341,7 +341,7 @@ function refreshQuote() {
         <div><div class="muted small">${T("переплата", "Переплата")}</div><div class="big num" data-count="${q.overpayment}" data-from="${prev.overpayment || 0}">${rub(q.overpayment)}</div><div class="muted small">всего вернёте ${rub(q.total)}</div></div>`}</div>
       <div class="row wrapx mt">${fit}<span class="muted small">При таком сроке комфортная сумма — до ${rub(q.max_amount)}</span></div>
       <p class="hint">Предварительный расчёт, не оферта. Итоговые условия назовёт банк после проверки.</p>`.s;
-      animateCounts($("#quote"));
+
     } catch (e) { box.textContent = e.message; }
   }, 250);
 }
@@ -367,9 +367,9 @@ function offerCard(a) {
       <span class="chip ${o.type === "AS_REQUESTED" ? "ok" : "warn"}">${down ? "Другой продукт" : o.type === "AS_REQUESTED" ? "Одобрено" : "Другие условия"}</span></div>
     ${down ? h`<div class="notice warn mb">Запрошенный продукт на таких условиях не подходит. Мы подобрали «${o.product_title}» — он лучше соответствует вашей платёжеспособности и уровню риска. Можно принять предложение или подать новую заявку с другими параметрами.</div>` : ""}
     ${o.type === "COUNTER" ? h`<div class="notice warn mb">Мы подобрали условия, при которых платёж будет для бизнеса комфортным. ${o.term !== a.term ? "Срок увеличен — ставка для более длинного срока немного выше." : ""}</div>` : ""}
-    <div class="keyline mb"><div><span class="muted small">${limit ? T("лимит", "Лимит") : T("платёж", "Платёж в месяц")}</span><div class="big num">${limit ? rub(o.amount) : rub(o.payment)}</div></div>
-      <div><span class="muted small">${T("ставка", "Ставка")}</span><div class="big">${pct(o.rate)}</div></div>
-      <div><span class="muted small">Срок</span><div class="big">${limit ? "12 мес." : o.term + " мес."}</div></div></div>
+    <div class="keyline mb"><div><span class="muted small">${limit ? T("лимит", "Лимит") : T("платёж", "Платёж в месяц")}</span><div class="big num" data-count="1">${limit ? rub(o.amount) : rub(o.payment)}</div></div>
+      <div><span class="muted small">${T("ставка", "Ставка")}</span><div class="big" data-count="1">${pct(o.rate)}</div></div>
+      <div><span class="muted small">Срок</span><div class="big" data-count="1">${limit ? "12 мес." : o.term + " мес."}</div></div></div>
     <details ${o.type === "AS_REQUESTED" ? "" : "open"}><summary class="small muted" style="cursor:pointer">Сравнить с запрошенными условиями</summary>
     <table class="cmp"><thead><tr><th></th><th>Как просили</th><th>Как предлагаем</th></tr></thead><tbody>
       ${down ? h`<tr><td>Продукт</td><td>${a.product_title}</td><td class="chg">${o.product_title}</td></tr>` : ""}
@@ -445,6 +445,7 @@ function paintApp(a) {
     ctx = h`${ctx}${scheduleTable(a)}`;
   }
   const tl = [...a.events].reverse();
+  setTimeout(() => animateCounts(root()), 0);
   render(h`${raw(topbar())}<main class="wrap" id="appview"><a href="#/client" class="small">← Главная</a>
     <div class="row between wrapx mt mb"><div><h1>${a.product_title}</h1><div class="muted">${a.id} · ${rub(a.amount)}${a.product === "overdraft" ? " лимит" : " на " + a.term + " мес."} · подана ${dt(a.created)}</div></div></div>
     <div class="cols"><div>

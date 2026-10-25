@@ -171,6 +171,27 @@ details > summary { cursor: pointer; }
 .check:hover { background: var(--soft); }
 .check input { width: 18px; height: 18px; }
 
+
+/* страница заявки */
+.status.card h1 { font-size: 24px; margin: 10px 0 6px; animation: rise .7s var(--ease) both; }
+.status.card > .row .chip { animation: fade-in .6s var(--ease) both; }
+.hints > div { border-radius: var(--radius-xs); padding: 12px 14px; background: var(--soft); transition: background .3s var(--ease); }
+.hints > div.need { background: var(--accent-soft); border: 1px solid rgba(239,49,36,.22); }
+.keyline { background: var(--soft); border-radius: var(--radius); padding: 16px 20px; }
+.keyline .big { font-size: 26px; line-height: 32px; }
+.btn.good { background: var(--ok-fill); border-color: var(--ok-fill); } .btn.good:hover { background: var(--ok); box-shadow: 0 8px 20px -8px rgba(12,196,77,.6); }
+.btn.danger { background: transparent; color: var(--bad); border: 0; } .btn.danger:hover { background: var(--bad-soft); }
+.cmp td.chg { background: var(--warn-soft); color: var(--warn); }
+.cmp th, .cmp td { padding: 10px 10px; }
+details.card > summary { cursor: pointer; list-style: none; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+details.card > summary::before { content: "▸"; color: var(--faint); transition: transform .25s var(--ease); display: inline-block; }
+details.card[open] > summary::before { transform: rotate(90deg); }
+.timeline li.last::before { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.timeline li { animation: fade-in .5s var(--ease) both; }
+.code { border: 1px dashed var(--faint); background: var(--soft); border-radius: var(--radius-xs); }
+.reason .ic { width: 26px; height: 26px; }
+.spin { border-color: var(--info-soft); border-top-color: var(--info-fill); }
+
 /* продукты и предложения */
 .prod { cursor: pointer; border: 2px solid var(--line); border-radius: var(--radius); padding: 16px; background: var(--card); text-align: left; width: 100%; color: inherit; }
 .prod:hover { border-color: #b9c2cc; } .prod.sel { border-color: var(--accent); background: var(--accent-soft); }
@@ -281,6 +302,8 @@ table.t tr.focus td { background: var(--warn-soft); }
 #app.enter .topbar { animation: fade-in var(--t-base) var(--ease) both; }
 #app.enter .acc, #app.enter .card, #app.enter .tile, #app.enter .prod, #app.enter .roles h2, #app.enter .stepper { animation: rise .8s var(--ease) both; animation-delay: calc(120ms + var(--i, 0) * 70ms); }
 #app.enter .login-hero > * { animation: rise .9s var(--ease) both; }
+@keyframes digit-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+[data-count] .d { display: inline-block; animation: digit-in .55s var(--ease) both; animation-delay: calc(350ms + var(--g, 0) * 90ms + var(--k, 0) * 45ms); }
 #app.enter .login-hero > :nth-child(2) { animation-delay: 90ms; } #app.enter .login-hero > :nth-child(3) { animation-delay: 180ms; }
 #app.enter .login-hero > :nth-child(4) { animation-delay: 270ms; } #app.enter .login-hero > :nth-child(5) { animation-delay: 380ms; }
 .btn, .acc, .prod { will-change: transform; }
