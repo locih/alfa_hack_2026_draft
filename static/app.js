@@ -433,14 +433,31 @@ let loanIdx = 0;
 
 // ---------- лента новостей и сервисов банка (требование кейса: «новостная лента под клиента») ----------
 const BANK_NEWS = [
-  { href: "https://alfabank.ru/corporate/news/", title: "Новости масштабного бизнеса", text: "Аналитика рынка и новости для вашего бизнеса первыми", tone: "blue" },
-  { href: "https://alfabank.ru/corporate/lab-robot/", title: "Лаборатория роботизации", text: "Считаем окупаемость, подбираем технологию и финансируем внедрение", tone: "graphite" },
-  { href: "https://alfabank.ru/corporate/china/", title: "Альфа-Банк для бизнеса с Китаем", text: "Расчёты, закупки и сопровождение компаний, работающих с КНР", tone: "red" },
-  { href: "https://alfabank.ru/sme/abp/services/market_puls/", title: "Пульс рынка", text: "Сравните себя с конкурентами по данным эквайринга", tone: "mint" },
+  { cat: "Новости", href: "https://alfabank.ru/corporate/news/", title: "Новости масштабного бизнеса", text: "Аналитика рынка и новости для вашего бизнеса первыми", tone: "blue" },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/services/market_puls/", title: "Пульс рынка", text: "Сравните себя с конкурентами по данным эквайринга", tone: "mint" },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/credit-holidays-mob/", title: "Кредитные каникулы", text: "Отсрочка платежей, если бизнесу нужна передышка", tone: "graphite" },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/goscredit/", title: "Кредит с господдержкой", text: "Льготные ставки по программам субсидирования", tone: "red" },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/sub/", title: "Подписки на кредитные продукты", text: "Скидка на ставку по овердрафту и кредитной линии", tone: "violet" },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/business_insurance/", title: "Защита бизнеса", text: "Скидка на кредит 4,5 % и защита от непредвиденных расходов", tone: "graphite" },
+  { cat: "Кредиты", href: "https://alfabank.ru/sme/profits/alfastart/", title: "Альфа-Старт", text: "Финансирование для начинающего бизнеса", tone: "mint" },
+  { cat: "Финансирование", href: "https://alfabank.ru/sme/guarantee/client/", title: "Банковская гарантия", text: "Для контрактов и госзакупок без замораживания денег", tone: "blue" },
+  { cat: "Финансирование", href: "https://alfabank.ru/sme/profits/factoring/", title: "Факторинг", text: "Деньги за поставки сразу, не дожидаясь оплаты покупателя", tone: "red" },
+  { cat: "Финансирование", href: "https://alfaleasing.ru/", title: "Лизинг", text: "Техника и транспорт в лизинг от Альфа-Лизинга", tone: "graphite" },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/services/check-contragent/", title: "Проверка контрагентов", text: "Риски партнёра до подписания договора", tone: "violet" },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/abp/bookkeeping/", title: "Альфа-Бухгалтерия", text: "Налоги и отчётность для ИП и ООО внутри банка", tone: "mint" },
+  { cat: "Сервис", href: "https://alfabank.ru/sme/alfaapi/", title: "Alfa API", text: "Интеграция банка с вашей ERP и учётом", tone: "blue" },
+  { cat: "Полезное", href: "https://alfabank.ru/sme/115fz/how-to-protect/", title: "Полезное о 115-ФЗ", text: "Как не попасть под блокировку счёта", tone: "red" },
+  { cat: "Сообщество", href: "https://alfabank.ru/sme/fond/", title: "Фонд немалого бизнеса", text: "Расскажите про бизнес и получите деньги на рекламу", tone: "graphite" },
+  { cat: "Сообщество", href: "https://alfabank.ru/sme/confa/", title: "Альфа-Конфа", text: "Масштабные события для бизнеса и предпринимателей", tone: "violet" },
+  { cat: "Обучение", href: "https://kurs.alfabank.ru/", title: "Бизнес-школа Альфа-Курс", text: "Курсы для предпринимателей от практиков", tone: "mint" },
+  { cat: "Обучение", href: "https://alfabank.ru/help/articles/sme/", title: "Полезные статьи для бизнеса", text: "Разборы, инструкции и кейсы для малого бизнеса", tone: "blue" },
+  { cat: "Сервис", href: "https://alfabank.ru/corporate/lab-robot/", title: "Лаборатория роботизации", text: "Считаем окупаемость, подбираем технологию и финансируем внедрение", tone: "graphite" },
+  { cat: "Направления", href: "https://alfabank.ru/corporate/china/", title: "Бизнес с Китаем", text: "Расчёты, закупки и сопровождение компаний, работающих с КНР", tone: "red" },
 ];
 function newsBlock() {
-  return h`<section class="news mb" aria-label="Новости и сервисы банка"><div class="row between wrapx"><h2 style="margin:0">Новости и сервисы банка</h2><span class="muted small">внешние страницы alfabank.ru</span></div>
-    <div class="news-track">${BANK_NEWS.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${i}"><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`)}</div></section>`;
+  return h`<section class="news mb" aria-label="Новости и сервисы банка"><div class="row between wrapx"><div><h2 style="margin:0">Новости и сервисы банка</h2><span class="muted small">внешние страницы alfabank.ru · ${BANK_NEWS.length} ссылок</span></div>
+      <div class="news-nav"><button class="btn sm" data-act="news-prev" aria-label="Назад">←</button><button class="btn sm" data-act="news-next" aria-label="Вперёд">→</button></div></div>
+    <div class="news-track" data-news>${BANK_NEWS.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i, 5)}"><small>${n.cat}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`)}</div></section>`;
 }
 
 
@@ -461,6 +478,7 @@ function radarChart(f) {
   return h`<svg class="chart rchart" viewBox="0 0 ${W} ${H + 24}" role="img" aria-label="Поступления за 12 месяцев, прогноз на 3 месяца и остаток на счёте на 90 дней">
     <rect class="r-fzone" x="${fx0 - gap / 2}" y="0" width="${fw + gap}" height="${H}" rx="8"/>
     ${vals.map((v, i) => h`<g style="--i:${i}"><rect class="bar ${i < 12 ? "" : "fc"}" x="${x(i)}" y="${y(v)}" width="${bw}" height="${(H - y(v)).toFixed(1)}" rx="5"/>
+      ${i >= 12 && f.months[i - 12].high ? h`<line class="r-band" x1="${x(i) + bw / 2}" x2="${x(i) + bw / 2}" y1="${y(f.months[i - 12].high)}" y2="${y(f.months[i - 12].low)}"/><line class="r-band" x1="${x(i) + bw / 2 - 5}" x2="${x(i) + bw / 2 + 5}" y1="${y(f.months[i - 12].high)}" y2="${y(f.months[i - 12].high)}"/><line class="r-band" x1="${x(i) + bw / 2 - 5}" x2="${x(i) + bw / 2 + 5}" y1="${y(f.months[i - 12].low)}" y2="${y(f.months[i - 12].low)}"/>` : ""}
       <text x="${x(i) + bw / 2}" y="${H + 16}" text-anchor="middle">${i < 12 ? monthName(monthOf(i), false) : monthName(new Date(f.months[i - 12].month + "-01"), false) + "*"}</text></g>`)}
     <line class="r-cushion" x1="${fx0}" x2="${fx0 + fw}" y1="${yb(f.cushion)}" y2="${yb(f.cushion)}"/>
     ${bmin < 0 ? h`<line class="r-zero" x1="${fx0}" x2="${fx0 + fw}" y1="${yb(0)}" y2="${yb(0)}"/>` : ""}
@@ -487,6 +505,8 @@ function radarCard(f, prod) {
     ${radarChart(f)}
     <div class="r-legend small muted"><span><i class="sw t"></i>поступления</span><span><i class="sw tf"></i>прогноз*</span><span><i class="sw g"></i>остаток на счёте</span><span><i class="sw gd"></i>подушка — месяц обязательных платежей</span><span><i class="sw r"></i>платежи по кредитам</span></div>
     ${msg}
+    ${f.factors ? h`<details class="r-factors"><summary><b>Что учитывает радар</b> <span class="muted small">· рынок, активность, финансы, репутация · подушка ×${f.cushion_multiplier}, коридор ±${Math.round(f.band * 100)} %</span></summary>
+      <div class="r-fgrid">${f.factors.map((x) => h`<div class="r-f ${x.effect.startsWith("без") || x.effect.startsWith("коридор") ? "" : "warn"}"><b>${x.title}</b><span>${x.value}</span><em>${x.effect}</em><small>в проде: ${x.source}</small></div>`)}</div></details>` : ""}
     <p class="hint">Модель прозрачная: сезонность того же месяца год назад × тренд полугодия × маржа отрасли; расходы — в дни зарплат, аренды и поставщиков; списания — по графику платежей. Прогноз, не гарантия.</p></div>`;
 }
 
@@ -993,6 +1013,8 @@ const act = {
   "demo-login": (el) => doLogin(el.dataset.login, "demo123"),
   "receipts-details": () => { if (window.__prof) showReceipts(window.__prof.receipts, receiptsMonth); },
   "loan-pick": (el) => { loanIdx = +el.dataset.i; repaintSection(); },
+  "news-prev": () => { const t = $("[data-news]"); t?.scrollBy({ left: -(t.clientWidth - 40), behavior: "smooth" }); },
+  "news-next": () => { const t = $("[data-news]"); t?.scrollBy({ left: t.clientWidth - 40, behavior: "smooth" }); },
   "radar-scn": async (el) => {
     const v = +el.dataset.v; if (!window.__client) return;
     try { window.__client.forecast = await api("/client/forecast?scenario=" + v); } catch (e) { toast(e.message, true); return; }

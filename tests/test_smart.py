@@ -42,3 +42,12 @@ def test_limit_for_blocked_client_is_zero(api):
     h = login(api, "stroy")
     lim = api.get("/api/client/limit", headers=h).json()
     assert lim["limit"] == 0 and lim["available"] == 0
+
+
+def test_forecast_factors_and_band(api):
+    h = login(api, "gromov")                                     # сбой БКИ и ИП с наличной выручкой — факторы должны это показать
+    f = api.get("/api/client/forecast", headers=h).json()
+    ids = [x["id"] for x in f["factors"]]
+    assert ids == ["market", "activity", "finance", "reputation"] and 0.08 <= f["band"] <= 0.6
+    assert f["cushion_multiplier"] >= 1.0 and all(m["low"] <= m["receipts"] <= m["high"] for m in f["months"])
+    assert any("БКИ" in x["value"] for x in f["factors"] if x["id"] == "reputation")
