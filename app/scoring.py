@@ -5,6 +5,8 @@
 """
 import statistics
 
+from ml.scale import score_to_pd
+
 from .config import policy
 
 STOP_RULES = {
@@ -104,7 +106,7 @@ def score(p: dict) -> dict:
     # 2. Денежный поток (33)
     avg_k = round(p["avg"] / 1000)
     add("2.1", "Денежный поток", "Среднемесячные поступления", _band(avg_k, [(300, 0), (1000, 3), (3000, 6), (10000, 8), (0, 10)]), 10,
-        f"{round(avg_k):,} тыс. ₽".replace(",", " "))
+        f"{avg_k:,} тыс. ₽".replace(",", " "))
     add("2.2", "Денежный поток", "Динамика поступлений", _band(p["dynamics"], [(-0.30, 0), (-0.10, 3), (0.10, 5), (9, 7)]), 7,
         f"{p['dynamics'] * 100:+.0f} %")
     add("2.3", "Денежный поток", "Стабильность поступлений", _band(p["cv"], [(0.25 + 1e-9, 8), (0.5, 5), (0.8, 2), (0, 0)]), 8,
@@ -116,11 +118,13 @@ def score(p: dict) -> dict:
     if not b or b["history_months"] == 0:
         s31, s32 = 6, 3
     else:
-        s31 = {0: 12}.get(b["max_overdue_24m"]) or _band(b["max_overdue_24m"], [(1, 12), (8, 9), (31, 4), (60, 0), (0, 0)])
+        s31 = _band(b["max_overdue_24m"], [(1, 12), (8, 9), (31, 4), (60, 0), (0, 0)])
         s32 = _band(b["history_months"], [(12, 4), (36, 6), (0, 8)])
+    no_history = bool(b) and b["history_months"] == 0
     add("3.1", "Кредитная история", "Просрочки за 24 мес.", s31, 12,
-        "нет данных БКИ" if not b else ("нет просрочек" if b["max_overdue_24m"] == 0 else f"макс. {b['max_overdue_24m']} дн."))
-    add("3.2", "Кредитная история", "Длина кредитной истории", s32, 8, "нет данных БКИ" if not b else f"{b['history_months']} мес.")
+        "нет данных БКИ" if not b else "нет кредитной истории" if no_history else ("нет просрочек" if b["max_overdue_24m"] == 0 else f"макс. {b['max_overdue_24m']} дн."))
+    add("3.2", "Кредитная история", "Длина кредитной истории", s32, 8,
+        "нет данных БКИ" if not b else "нет кредитной истории" if no_history else f"{b['history_months']} мес.")
     add("3.3", "Кредитная история", "Обращения за кредитом (3 мес.)", _band(b["inquiries_3m"], [(3, 5), (6, 3), (0, 0)]) if b else 5, 5,
         "нет данных БКИ" if not b else str(b["inquiries_3m"]))
     add("3.4", "Кредитная история", "Действующие обязательства", _band(b["active_loans"], [(3, 5), (5, 3), (0, 0)]) if b else 5, 5,
@@ -137,18 +141,18 @@ def score(p: dict) -> dict:
 
 
 def grade(total: int) -> str:
-    for g, cfg in policy()["pricing"]["grades"].items():
+    grades = sorted(policy()["pricing"]["grades"].items(), key=lambda kv: -kv[1]["min_score"])   # не зависим от порядка ключей в YAML
+    for g, cfg in grades:
         if total >= cfg["min_score"]:
             return g
-    return "E"
+    return grades[-1][0]
 
 
 def pd_percent(total: int) -> float:
-    """PD по методу PDO: 60 баллов = 5 %, +15 баллов удваивает шансы (только для документации/аудита)."""
-    odds = 19 * 2 ** ((total - 60) / 15)
-    return round(100 / (1 + odds), 1)
+    """PD в % по шкале PDO (только для цены и аудита)."""
+    return round(100 * score_to_pd(total), 1)
 
 
 def pd_fraction(total: float) -> float:
-    """PD (доля 0..1) по шкале PDO — тот же перевод баллов в вероятность, что и у ML-слоя."""
-    return 1 / (1 + 19 * 2 ** ((total - 60) / 15))
+    """PD (доля 0..1) по шкале PDO — тот же перевод, что у ML-слоя."""
+    return score_to_pd(total)

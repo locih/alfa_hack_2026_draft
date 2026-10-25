@@ -57,7 +57,8 @@ def tx():
         yield c
         c.execute("COMMIT")
     except BaseException:
-        c.execute("ROLLBACK")
+        if c.in_transaction:                                    # BEGIN мог не выполниться (БД занята) — не маскируем исходную ошибку
+            c.execute("ROLLBACK")
         raise
     finally:
         c.close()

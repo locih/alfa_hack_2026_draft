@@ -3,6 +3,9 @@
 Все данные синтетические; ИНН с нереальным кодом региона «00». Каждый источник возвращает
 {status: OK|UNAVAILABLE, fetched_at, data}. Недоступность источника не роняет заявку — она уходит на ручной разбор.
 """
+import random
+import time
+
 from . import db
 
 # Шаблон помесячных отклонений: нулевая сумма в каждой половине года → тренд задаётся параметром, а не шумом
@@ -113,7 +116,7 @@ def bank_data(client: dict, statement_uploaded: bool) -> dict:
             "account": client["account"]}
 
 
-def collect(client: dict, statement_uploaded: bool, bureau_mode: str, retries: int = 2) -> tuple[dict, list[str]]:
+def collect(client: dict, statement_uploaded: bool, bureau_mode: str, retries: int = 2, backoff: float = 0.0) -> tuple[dict, list[str]]:
     """Собирает данные из всех источников. Возвращает (enrichment, строки журнала для банка)."""
     log: list[str] = []
     out = {"egrul": {"status": "OK", "fetched_at": db.now(), "data": egrul(client)},
@@ -130,6 +133,8 @@ def collect(client: dict, statement_uploaded: bool, bureau_mode: str, retries: i
             break
         except Unavailable as e:
             log.append(f"{e}; попытка {attempt} из {retries + 1}")
+            if backoff > 0 and attempt <= retries:               # экспоненциальная пауза с джиттером между повторами
+                time.sleep(backoff * 2 ** (attempt - 1) * (0.5 + random.random()))
     else:
         out["bureau"] = {"status": "UNAVAILABLE", "fetched_at": db.now(), "data": None}
     return out, log

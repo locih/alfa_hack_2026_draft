@@ -13,6 +13,7 @@ os.environ["KEY_RATE"] = "14.0"
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import db  # noqa: E402
+from app import main as main_module  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -20,6 +21,7 @@ from app.main import app  # noqa: E402
 def api():
     with TestClient(app) as c:
         db.reset_data()
+        main_module._LOGIN_FAILS.clear()
         yield c
 
 

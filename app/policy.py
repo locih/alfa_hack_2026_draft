@@ -193,7 +193,7 @@ def quote(product: str, grade: str, p: dict, amount: int, term: int, collateral:
     prod = policy()["products"][product]
     o = _offer_terms(product, grade, amount, term, collateral, False, key_rate, "QUOTE")
     af = afford(p, grade)
-    base = _offer_terms(product, grade, amount, term, "none", False, key_rate, "QUOTE")["rate"]
+    base = pricing.rate_for(product, grade, term, "none", False, key_rate)       # ставка без обеспечения — график для неё не нужен
     res = {"collateral_effect": round(base - o["rate"], 2), "rate": o["rate"], "payment": o["payment"], "total": o["total"], "overpayment": o["overpayment"],
            "fee": o["fee"], "interest_30d": o.get("interest_30d"), "p_max": af["p_max"], "grade": grade}
     if prod["kind"] == "limit":

@@ -35,7 +35,9 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* приватный режим */ } },
 };
-let session = { token: store.get("token"), user: JSON.parse(store.get("user") || "null") };
+function readUser() { try { return JSON.parse(store.get("user") || "null"); } catch { return null; } }   // испорченный localStorage не должен ломать сайт
+let session = { token: store.get("token"), user: readUser() };
+if (!session.user) session.token = null;
 let poll = null;
 
 async function api(path, opts = {}) {
@@ -121,20 +123,21 @@ function topbar(extra = "") {
 // ---------- вход ----------
 async function viewLogin() {
   stopPoll();
-  const d = await api("/auth/demo-users", { noAuthRedirect: true });
+  const d = await api("/auth/demo-users", { noAuthRedirect: true }).catch(() => null);      // null — демо-режим выключен (DEMO_MODE=0)
+  const users = d ? d.users : [];
   const av = (n) => n.replace(/[«»"]/g, "").split(" ").filter((w) => w.length > 1).slice(0, 2).map((w) => w[0]).join("");
   render(h`<div class="login">
     <h1>Умный кредитный кабинет</h1>
     <p class="muted">Прототип цифрового кредитного конвейера для малого и микробизнеса: кабинет клиента и рабочее место банка в одной системе.</p>
-    <div class="notice mt mb">Демо-стенд: данные синтетические, БКИ, ЕГРЮЛ и ФНС — моки, подписание и выдача — имитация. Выберите роль для входа:</div>
-    ${d.users.map((u) => h`<button class="acc" data-act="demo-login" data-login="${u.login}">
+    <div class="notice mt mb">Демо-стенд: данные синтетические, БКИ, ЕГРЮЛ и ФНС — моки, подписание и выдача — имитация. ${d ? "Выберите роль для входа:" : "Войдите под своей учётной записью."}</div>
+    ${users.map((u) => h`<button class="acc" data-act="demo-login" data-login="${u.login}">
       <span class="av">${av(u.name)}</span><span><b>${u.name}</b><small>${u.hint}</small></span></button>`)}
-    <details class="mt"><summary class="muted small">Войти по логину и паролю</summary>
+    <details class="mt" ${d ? "" : "open"}><summary class="muted small">Войти по логину и паролю</summary>
       <form data-act="login-form" class="mt">
         <div class="field"><label for="lg">Логин</label><input id="lg" type="text" autocomplete="username"></div>
         <div class="field"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="current-password"></div>
         <button class="btn primary" type="submit">Войти</button>
-        <p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p></form></details></div>`);
+        ${d ? h`<p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p>` : ""}</form></details></div>`);
 }
 
 async function doLogin(login, password) {
@@ -315,7 +318,7 @@ let lastSig = "";
 async function viewApp(id) {
   const a = await api("/client/applications/" + id);
   if (a.loan) a.account = await api("/client/account");
-  const sig = a.status.code + a.events.length + a.updated + (a.account ? a.account.balance : "");
+  const sig = a.id + a.status.code + a.events.length + a.updated + (a.account ? a.account.balance : "");
   if (sig === lastSig && $("#appview")) return;
   lastSig = sig;
   paintApp(a);
@@ -520,7 +523,8 @@ async function viewBankApp(id, silent) {
         <dt>Макс. платёж P_max = ЧДП / DSCR − текущие платежи</dt><dd class="num"><b>${rub(af.p_max)}</b></dd>
         ${af.amax_requested_term != null ? h`<dt>Макс. сумма на запрошенный срок</dt><dd class="num">${rub(af.amax_requested_term)}</dd>` : ""}
         ${af.limit_max != null ? h`<dt>Макс. лимит (50 % поступлений)</dt><dd class="num">${rub(af.limit_max)}</dd>` : ""}</dl>
-        ${rec ? h`<hr><h3>Рекомендация системы</h3><p>${rec.type === "AS_REQUESTED" ? "Как запрошено" : "Встречное предложение"}: <b>${rub(rec.amount)}</b> на <b>${rec.term} мес.</b> под <b>${pct(rec.rate)}</b>${rec.payment ? h`, платёж ${rub(rec.payment)}` : ""}.</p>` : h`<p class="muted">Система не нашла условий, при которых заявка проходит.</p>`}</div>` : ""}
+        ${rec ? h`<hr><h3>Рекомендация системы</h3><p>${{ AS_REQUESTED: "Как запрошено", COUNTER: "Встречное предложение", DOWNSELL: "Другой продукт" }[rec.type] || "Предложение"}: <b>${rec.product_title || d.product_title}</b>, <b>${rub(rec.amount)}</b> на <b>${rec.term} мес.</b> под <b>${pct(rec.rate)}</b>${rec.payment ? h`, платёж ${rub(rec.payment)}` : ""}.</p>
+          ${rec.type === "DOWNSELL" ? h`<div class="notice warn">Запрошен «${d.product_title}», рекомендован другой продукт: одобрение оформит предложение по продукту «${rec.product_title}».</div>` : ""}` : h`<p class="muted">Система не нашла условий, при которых заявка проходит.</p>`}</div>` : ""}
       <div class="card mt"><h2>Источники данных</h2>${src.length ? src.map(([k, v]) => h`<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${names[k]}</span>
         <span><span class="chip ${v.status === "OK" ? "ok" : "bad"}">${v.status === "OK" ? "OK" : "недоступно"}</span> <span class="muted small">${dt(v.fetched_at)}</span></span></div>`)
         : h`<p class="muted">Данные ещё не запрашивались.</p>`}<p class="hint">Все источники — моки на синтетических данных; недоступность источника переводит заявку на ручной разбор, а не в отказ.</p></div>
@@ -532,7 +536,7 @@ async function viewBankApp(id, silent) {
         <div class="field"><label for="act">Действие</label><select id="act"><option value="approve">Одобрить / изменить условия</option><option value="request_docs">Запросить документы</option><option value="decline">Отказать</option></select></div>
         <div id="f-approve"><div class="grid g2"><div class="field"><label for="d_amt">Сумма, ₽</label><input id="d_amt" type="number" step="50000" value="${rec ? rec.amount : req.amount}"></div>
           <div class="field"><label for="d_trm">Срок, мес.</label><input id="d_trm" type="number" value="${rec ? rec.term : req.term}"></div></div>
-          <p class="hint">Ставку система считает по формуле для ручного разбора; платёж выше P_max требует комментария.</p></div>
+          <p class="hint">Ставку система считает по формуле для ручного разбора; платёж выше P_max требует комментария. ${rec && rec.product && rec.product !== req.product ? h`Предложение оформится по продукту «${rec.product_title}».` : ""}</p></div>
         <div id="f-decline" class="hide"><label>Причины (видит клиент)</label>${reasonsOpts.map(([k, t]) => h`<label class="check"><input type="checkbox" class="rs" value="${k}"> <span><b>${k}</b> ${t}</span></label>`)}</div>
         <div class="field"><label for="d_cm">Комментарий</label><textarea id="d_cm" placeholder="Обязателен при запросе документов"></textarea></div>
         <button class="btn primary" data-act="decide">Принять решение</button></div>` : ""}
@@ -566,7 +570,6 @@ async function route(silent) {
     if (parts[0] === "bank") {
       if (role === "client") return (location.hash = "#/client");
       if (parts[1] === "app") return await viewBankApp(parts[2], silent);
-      if (!silent || !$(".tiles")) return await viewBank();
       return await viewBank();
     }
     location.hash = role === "client" ? "#/client" : "#/bank";
