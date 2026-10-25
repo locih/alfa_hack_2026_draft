@@ -639,3 +639,5 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .sw.t { background: linear-gradient(180deg, #9a85ff, #5a3df0); }
 .r-avg-lbl { paint-order: stroke; stroke: var(--card); stroke-width: 3px; }
 .sw.now { background: linear-gradient(180deg, #c6ff4d, #8fd400); }
+.b-other { fill: none; stroke: var(--chart-line); stroke-width: 1.2; opacity: .35; stroke-dasharray: 3 3; }
+.sw.thin { background: var(--chart-line); height: 1px; opacity: .5; vertical-align: 3px; }

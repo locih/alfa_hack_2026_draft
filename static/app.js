@@ -493,22 +493,25 @@ function radarChart(f) {
   </svg>`;
 }
 // остаток на счёте на 90 дней — отдельный широкий график: плавная область, подушка, платежи, даты
-function balanceChart(f) {
+function balanceChart(f, fs) {
   const W = 600, H = 110, padL = 2, padR = 2;
-  const bal = f.path.map((p) => p.balance), vmin = Math.min(0, ...bal, f.cushion), vmax = Math.max(...bal, f.balance, f.cushion) * 1.06 || 1;
+  const all = fs ? [fs.base, fs.opt, fs.pes] : [f];
+  const allBal = all.flatMap((q) => q.path.map((p) => p.balance));
+  const vmin = Math.min(0, ...allBal, f.cushion), vmax = Math.max(...allBal, f.balance, f.cushion) * 1.06 || 1;
   const yb = (v) => 6 + (H - 12) * (1 - (v - vmin) / (vmax - vmin)), px = (day) => padL + (day / f.horizon_days) * (W - padL - padR);
-  const pts = [[px(0), yb(f.balance)], ...f.path.map((p, i) => [px(i + 1), yb(p.balance)])];
-  // сглаживание квадратичными кривыми через середины отрезков
-  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-  for (let i = 1; i < pts.length - 1; i++) { const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; d += ` Q${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`; }
-  d += ` L${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}`;
+  const smooth = (q) => { const pts = [[px(0), yb(q.balance)], ...q.path.map((p, i) => [px(i + 1), yb(p.balance)])];
+    let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 1; i < pts.length - 1; i++) { const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; d += ` Q${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`; }
+    return { pts, d: d + ` L${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}` }; };
+  const { pts, d } = smooth(f);
+  const others = fs ? all.filter((q) => q !== f).map((q) => smooth(q).d) : [];
   const area = d + ` L${px(f.horizon_days)} ${H} L${px(0)} ${H} Z`;
   const gapPt = f.gap ? pts[f.gap.day] : null, fmt = (v) => (Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace(".", ",") + " млн" : Math.round(v / 1e3) + " тыс.");
   const ticks = [0, 30, 60, 90].map((dd) => [dd, new Date(new Date(f.today).getTime() + dd * 864e5)]);
   return h`<svg class="bchart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Остаток на счёте на 90 дней вперёд">
     <defs><linearGradient id="bgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--chart-b)" stop-opacity=".45"/><stop offset="1" stop-color="var(--chart-b)" stop-opacity="0"/></linearGradient></defs>
     ${vmin < 0 ? h`<rect class="b-neg" x="${px(0)}" y="${yb(0)}" width="${W - padL - padR}" height="${(H - yb(0)).toFixed(1)}"/>` : ""}
-    <path class="b-area" d="${area}"/><path class="b-line" d="${d}"/>
+    <path class="b-area" d="${area}"/>${others.map((od) => h`<path class="b-other" d="${od}"/>`)}<path class="b-line" d="${d}"/>
     <line class="r-cushion" x1="${px(0)}" x2="${px(f.horizon_days)}" y1="${yb(f.cushion)}" y2="${yb(f.cushion)}"/>
     <text class="b-lbl" x="${px(f.horizon_days)}" y="${yb(f.cushion) - 4}" text-anchor="end">подушка ${fmt(f.cushion)}</text>
     ${vmin < 0 ? h`<line class="r-zero" x1="${px(0)}" x2="${px(f.horizon_days)}" y1="${yb(0)}" y2="${yb(0)}"/>` : ""}
@@ -519,10 +522,17 @@ function balanceChart(f) {
   </svg>`;
 }
 const dayIndex = (today, iso) => Math.round((new Date(iso) - new Date(today)) / 864e5);
-let radarScenario = 0;
-function radarCard(f, prod) {
-  if (!f) return h`<div class="card radar"><h2>Финансовый радар</h2><p class="muted">Прогноз недоступен.</p></div>`;
-  const g = f.gap, o = f.offer, scn = [[0, "Базовый"], [-0.2, "Спад −20 %"], [-0.4, "Спад −40 %"]];
+let radarScenario = "base";
+// оптимистичный и пессимистичный сценарии = базовый ± коридор изменчивости оборотов клиента
+async function loadScenarios(base) {
+  const d = Math.min(0.5, Math.max(0.1, base.band || 0.2));
+  const [opt, pes] = await Promise.all([api("/client/forecast?scenario=" + d).catch(() => null), api("/client/forecast?scenario=" + (-d)).catch(() => null)]);
+  return { base, opt: opt || base, pes: pes || base, delta: d };
+}
+function radarCard(fs, prod) {
+  if (!fs || !fs.base) return h`<div class="card radar"><h2>Финансовый радар</h2><p class="muted">Прогноз недоступен.</p></div>`;
+  const f = fs[radarScenario] || fs.base, g = f.gap, o = f.offer, dpct = Math.round(fs.delta * 100);
+  const scn = [["opt", "Оптимистичный +" + dpct + " %"], ["base", "Базовый"], ["pes", "Пессимистичный −" + dpct + " %"]];
   const msg = g ? h`<div class="r-msg bad"><b>Через ${g.day} ${plural(g.day, "день", "дня", "дней")} возможен кассовый разрыв около ${rub(g.amount)}.</b>
       <span>${dateOnly(g.date)} остаток упадёт ниже подушки ${rub(f.cushion)}; минимум ${rub(g.lowest_balance)} ${dateOnly(g.lowest_date)}.
       ${o ? h`Закрыть дешевле всего: <b>${prod[o.product]?.title ?? o.product}</b> на ${rub(o.amount)}${o.product === "overdraft" ? " — проценты только за дни использования" : ""}, ставка от ${pct(o.rate_from)}.` : "Подходящий продукт подберём в заявке."}</span>
@@ -532,12 +542,12 @@ function radarCard(f, prod) {
       <a class="btn" href="#/client/products">Посмотреть предложения →</a></div>`;
   return h`<div class="card radar"><div class="row between wrapx"><div><h2>Финансовый радар</h2><div class="muted small">Поступления за 12 месяцев, прогноз на 3 и остаток на счёте на 90 дней вперёд</div></div>
       <div class="row wrapx" style="gap:8px"><div class="ptabs scn" aria-label="Диапазон">${Object.entries(RADAR_RANGES).map(([k, [, t]]) => h`<button class="ptab ${k === radarRange ? "sel" : ""}" data-act="radar-range" data-k="${k}">${t}</button>`)}</div>
-      <div class="ptabs scn" aria-label="Сценарий">${scn.map(([v, t]) => h`<button class="ptab ${v === f.scenario ? "sel" : ""}" data-act="radar-scn" data-v="${v}">${t}</button>`)}</div></div></div>
+      <div class="ptabs scn" aria-label="Сценарий">${scn.map(([v, t]) => h`<button class="ptab ${v === radarScenario ? "sel" : ""}" data-act="radar-scn" data-v="${v}">${t}</button>`)}</div></div></div>
     ${radarChart(f)}
     <div class="r-legend small muted"><span><i class="sw t"></i>поступления</span><span><i class="sw now"></i>текущий месяц</span><span><i class="sw tf"></i>прогноз* с коридором</span><span><i class="sw gd"></i>среднее за год ${rub(Math.round(f.fact.reduce((a2, b2) => a2 + b2, 0) / 12))}</span></div>
     <div class="r-sub"><b>Остаток на счёте, 90 дней</b> <span class="muted small">· сейчас ${rub(f.balance)} · минимум ${rub(Math.min(...f.path.map((p) => p.balance)))}</span></div>
-    ${balanceChart(f)}
-    <div class="r-legend small muted"><span><i class="sw g"></i>остаток на счёте</span><span><i class="sw gd"></i>подушка — месяц обязательных платежей</span><span><i class="sw r"></i>платежи по кредитам</span></div>
+    ${balanceChart(f, fs)}
+    <div class="r-legend small muted"><span><i class="sw g"></i>остаток — ${scn.find(([v]) => v === radarScenario)[1].toLowerCase()}</span><span><i class="sw thin"></i>два других сценария</span><span><i class="sw gd"></i>подушка — месяц обязательных платежей</span><span><i class="sw r"></i>платежи по кредитам</span></div>
     ${msg}
     ${f.factors ? h`<details class="r-factors"><summary><b>Что учитывает радар</b> <span class="muted small">· рынок, активность, финансы, репутация · подушка ×${f.cushion_multiplier}, коридор ±${Math.round(f.band * 100)} %</span></summary>
       <div class="r-fgrid">${f.factors.map((x) => h`<div class="r-f ${x.effect.startsWith("без") || x.effect.startsWith("коридор") ? "" : "warn"}"><b>${x.title}</b><span>${x.value}</span><em>${x.effect}</em><small>в проде: ${x.source}</small></div>`)}</div></details>` : ""}
@@ -620,7 +630,8 @@ async function viewClient(tab = "overview") {
   clientTab = CLIENT_TABS.some(([k]) => k === tab) ? tab : "overview";
   const ids = [...new Set([...prof.loans.map((l) => l.app_id), ...apps.slice(0, 6).map((a) => a.id)])];
   const det = Object.fromEntries((await Promise.all(ids.map((id) => api("/client/applications/" + id).then((d) => [id, d]).catch(() => [id, null])))));
-  const [forecast, limit] = await Promise.all([api("/client/forecast").catch(() => null), api("/client/limit").catch(() => null)]);
+  const [base, limit] = await Promise.all([api("/client/forecast").catch(() => null), api("/client/limit").catch(() => null)]);
+  const forecast = base ? await loadScenarios(base) : null;
   window.__prof = prof; window.__client = { prof, apps, cat, prod, active, det, forecast, limit };
   window.__notifs = buildNotifs(window.__client);
   stopPoll();
@@ -1050,9 +1061,8 @@ const act = {
   "news-prev": () => { const t = $("[data-news]"); t?.scrollBy({ left: -(t.clientWidth - 40), behavior: "smooth" }); },
   "news-next": () => { const t = $("[data-news]"); t?.scrollBy({ left: t.clientWidth - 40, behavior: "smooth" }); },
   "radar-range": (el) => { radarRange = el.dataset.k; try { localStorage.setItem("radar-range", radarRange); } catch { /* приватный режим */ } const card = $(".card.radar"); if (card && window.__client) { card.outerHTML = radarCard(window.__client.forecast, window.__client.prod).s; $(".card.radar")?.classList.add("in"); } },
-  "radar-scn": async (el) => {
-    const v = +el.dataset.v; if (!window.__client) return;
-    try { window.__client.forecast = await api("/client/forecast?scenario=" + v); } catch (e) { toast(e.message, true); return; }
+  "radar-scn": (el) => {
+    radarScenario = el.dataset.v; if (!window.__client) return;
     const card = $(".card.radar"); if (card) { card.outerHTML = radarCard(window.__client.forecast, window.__client.prod).s; $(".card.radar")?.classList.add("in"); }
   },
   "prepay-amt": () => {},
