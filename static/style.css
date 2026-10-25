@@ -5,7 +5,7 @@
   --faint: var(--color-light-text-tertiary, rgba(5,8,29,.38));
   --line: var(--color-light-neutral-300, #e7e8eb); --soft: var(--color-light-neutral-100, #f2f3f5);
   --accent: var(--color-light-accent-primary, #ef3124); --accent-hover: var(--color-light-accent-primary-hover, #e32a17);
-  --accent-ink: #fff; --accent-soft: #ffebeb; --black: var(--color-light-accent-secondary, #212124);
+  --accent-ink: #fff; --accent-soft: #ffebeb; --black: var(--color-light-accent-secondary, #212124); --on-black: #fff; --btn2: var(--color-light-neutral-100, #f2f3f5); --btn2-hover: #e7e8eb;
   --violet: var(--color-static-brand-violet, #6a4dff);
   --ok: #0a9b40; --ok-fill: var(--color-light-status-positive, #0cc44d); --ok-soft: #dff8e5;
   --warn: #c96b00; --warn-fill: var(--color-light-status-attention, #fa9313); --warn-soft: #ffefd9;
@@ -17,11 +17,26 @@
   --ease: cubic-bezier(.16,1,.3,1); --ease-io: cubic-bezier(.65,0,.35,1); --t-fast: 0.45s; --t-base: 1.01s; --t-slow: 1.58s;
 }
 :root[data-theme="dark"] {
-  --bg: #121213; --card: #1c1c1e; --ink: rgba(255,255,255,.94); --muted: rgba(255,255,255,.6); --faint: rgba(255,255,255,.4);
-  --line: #29292c; --soft: #262629; --accent-soft: #3a1b18; --black: #f2f3f5;
+  /* тёмная тема как на корпоративном alfabank.ru: почти чёрный фон, тёмно-серые карточки, белая активная пилюля, светлее — интерактив */
+  --bg: #0f0f10; --card: #1f1f22; --ink: rgba(255,255,255,.94); --muted: rgba(255,255,255,.62); --faint: rgba(255,255,255,.4);
+  --line: #34343a; --soft: #2a2a2e; --btn2: #36363c; --btn2-hover: #44444b; --accent-soft: #3a1b18; --black: #fff; --on-black: #0f0f10;
   --ok: #4cc58a; --ok-soft: #14301f; --warn: #f0b04c; --warn-soft: #34270f;
-  --bad: #ff7b72; --bad-soft: #3a1c1c; --info: #6fb0f2; --info-soft: #16283c; --shadow-hover: none;
+  --bad: #ff7b72; --bad-soft: #3a1c1c; --info: #8bbdf7; --info-soft: #16283c; --shadow: none; --shadow-hover: none;
 }
+/* белые «острова» на тёмной теме: калькулятор заявки, оферта, досрочное погашение, напоминание о платеже */
+:root[data-theme="dark"] .island { --card: #fff; --bg: #f2f3f5; --ink: rgba(3,3,6,.88); --muted: rgba(4,4,19,.55); --faint: rgba(5,8,29,.38); --line: #e7e8eb; --soft: #f2f3f5; --btn2: #ececef; --btn2-hover: #e0e0e4;
+  --black: #212124; --on-black: #fff; --accent-soft: #ffebeb; --ok: #0a9b40; --ok-soft: #dff8e5; --warn: #c96b00; --warn-soft: #ffefd9; --bad: #d72505; --bad-soft: #ffebeb; --info: #2c64d4; --info-soft: #e4f0ff; --violet-soft: #efecff; --violet-ink: #4a30c9;
+  background: var(--card); color: var(--ink); }
+:root[data-theme="dark"] .prepay.island { padding: 16px 18px; border-radius: var(--radius-xs); margin-top: 16px; }
+:root[data-theme="dark"] .fcard.pay { background: #fff; color: #0f0f10; } :root[data-theme="dark"] .fcard.pay .ftext { color: rgba(0,0,0,.62); } :root[data-theme="dark"] .fcard.pay .flack { color: #0f0f10; }
+:root[data-theme="dark"] .fcard.pay .fx { background: rgba(0,0,0,.06); color: #0f0f10; } :root[data-theme="dark"] .fcard.pay .btn.link { color: rgba(0,0,0,.65); }
+:root[data-theme="dark"] .login-form form { background: var(--card); }
+:root[data-theme="dark"] #issued-overlay { background: rgba(15,15,16,.94); }
+:root[data-theme="dark"] .sv-col .i, :root[data-theme="dark"] .sw.i { background: rgba(255,255,255,.55); }
+:root[data-theme="dark"] .island .sv-col .i, :root[data-theme="dark"] .island .sw.i { background: #212124; }
+:root[data-theme="dark"] .pimg { filter: drop-shadow(0 14px 18px rgba(0,0,0,.5)); }
+:root[data-theme="dark"] .tile { border-color: transparent; }
+:root[data-theme="dark"] .task-left .pill { background: var(--soft); }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Onest", var(--font-family-system, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif); -webkit-font-smoothing: antialiased; }
@@ -55,8 +70,8 @@ button { font: inherit; cursor: pointer; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 
 /* кнопки и поля */
-.btn { border: 0; background: var(--soft); color: var(--ink); padding: 12px 20px; border-radius: var(--radius-xs); font-weight: 600; transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), box-shadow 0.788s var(--ease); }
-.btn:hover { background: var(--line); }
+.btn { border: 0; background: var(--btn2); color: var(--ink); padding: 12px 20px; border-radius: var(--radius-xs); font-weight: 600; transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), box-shadow 0.788s var(--ease); }
+.btn:hover { background: var(--btn2-hover); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn.good { background: var(--ok); color: #fff; border-color: var(--ok); }
@@ -160,7 +175,7 @@ details > summary { cursor: pointer; }
 .substeps { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
 .substeps .sub { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--card); color: var(--muted); font-size: 13px; font-weight: 500; transition: background .45s var(--ease), color .45s var(--ease); }
 .substeps .sub i { width: 22px; height: 22px; border-radius: 50%; background: var(--soft); color: var(--muted); font-style: normal; font-weight: 700; font-size: 12px; display: grid; place-items: center; transition: background .45s var(--ease), color .45s var(--ease); }
-.substeps .sub.now { color: var(--ink); font-weight: 600; } .substeps .sub.now i { background: var(--black); color: #fff; }
+.substeps .sub.now { color: var(--ink); font-weight: 600; } .substeps .sub.now i { background: var(--black); color: var(--on-black); }
 .substeps .sub.done { color: var(--ink); } .substeps .sub.done i { background: var(--ok-fill); color: #fff; }
 /* шаги заявки */
 .pill { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 9px 16px; border-radius: 999px; font-weight: 500; font-size: 14px; cursor: pointer; transition: background 0.338s var(--ease), color 0.338s var(--ease), border-color 0.338s var(--ease), transform 0.338s var(--ease); }
@@ -208,7 +223,7 @@ details.card[open] > summary::before { transform: rotate(90deg); }
 .tile.hot b { color: var(--accent); }
 .ftabs { display: inline-flex; gap: 4px; flex-wrap: wrap; background: var(--card); border-radius: 999px; padding: 6px; }
 .ftab { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--ink); padding: 12px 20px; border-radius: 999px; font-weight: 500; font-size: 15px; transition: background 0.562s var(--ease), color 0.562s var(--ease); }
-.ftab:hover { background: var(--soft); } .ftab.sel { background: var(--black); color: #fff; font-weight: 600; }
+.ftab:hover { background: var(--soft); } .ftab.sel { background: var(--black); color: var(--on-black); font-weight: 600; }
 .ftab .cnt { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--line); color: var(--ink); font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; transition: background 0.562s var(--ease), color 0.562s var(--ease); }
 .ftab.sel .cnt { background: rgba(255,255,255,.18); color: #fff; }
 .ftab .cnt.hot { background: var(--accent); color: #fff; }
@@ -262,7 +277,7 @@ body.iss-open { overflow: hidden; }
 .task-grid { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); gap: 20px; align-items: start; }
 .task-label { font-size: 13px; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
 .task-pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.task-left .pill { background: var(--line); border-color: transparent; } .task-left .pill.sel { background: var(--black); color: #fff; }
+.task-left .pill { background: var(--line); border-color: transparent; } .task-left .pill.sel { background: var(--black); color: var(--on-black); }
 .task-left textarea { background: var(--line); }
 .task-right { background: var(--card); border-radius: 20px; padding: 20px; }
 .task-title { font-size: 18px; margin: 0 0 4px; }
@@ -358,13 +373,13 @@ table.t tr.focus td { background: var(--warn-soft); }
 .sec-head h2 { font-size: 40px; line-height: 1.1; letter-spacing: -.025em; margin: 0; }
 .ptabs { display: inline-flex; gap: 4px; background: var(--card); border-radius: 999px; padding: 6px; }
 .ptab { border: 0; background: transparent; color: var(--ink); padding: 14px 24px; border-radius: 999px; font-size: 16px; font-weight: 500; transition: background 0.562s var(--ease), color 0.562s var(--ease); }
-.ptab:hover { background: var(--soft); } .ptab.sel { background: var(--black); color: #fff; }
+.ptab:hover { background: var(--soft); } .ptab.sel { background: var(--black); color: var(--on-black); }
 .role-cards { gap: 20px; }
 .rcard { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 32px 22px 26px; border: 0; background: var(--card); border-radius: 28px; color: inherit; cursor: pointer; transition: transform 0.675s var(--ease), box-shadow 0.675s var(--ease); }
 .rcard:hover { transform: translateY(-3px); box-shadow: var(--shadow-m); }
 .rcard .av { width: 64px; height: 64px; border-radius: 50%; background: var(--soft); display: grid; place-items: center; font-weight: 700; font-size: 20px; margin-bottom: 10px; transition: background 0.562s var(--ease), color 0.562s var(--ease); }
-.rcard.bank .av { background: var(--black); color: #fff; }
-.rcard:hover .av { background: var(--accent-soft); color: var(--accent); } .rcard.bank:hover .av { background: var(--black); color: #fff; }
+.rcard.bank .av { background: var(--black); color: var(--on-black); }
+.rcard:hover .av { background: var(--accent-soft); color: var(--accent); } .rcard.bank:hover .av { background: var(--black); color: var(--on-black); }
 .rcard b { font-size: 20px; line-height: 1.2; }
 .rcard small { display: block; color: var(--muted); font-size: 14px; line-height: 1.4; min-height: 40px; }
 .rcard .go { display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; color: var(--accent); font-weight: 600; font-size: 14px; }
@@ -414,7 +429,7 @@ table.t tr.focus td { background: var(--warn-soft); }
 .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; } .modal-head h2 { margin: 0 0 4px; }
 .month-tabs { display: flex; flex-wrap: wrap; gap: 4px; background: var(--soft); border-radius: 999px; padding: 4px; margin-top: 16px; }
 .mtab { border: 0; background: transparent; padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--ink); transition: background .3s var(--ease), color .3s var(--ease); }
-.mtab:hover { background: var(--line); } .mtab.sel { background: var(--black); color: #fff; }
+.mtab:hover { background: var(--line); } .mtab.sel { background: var(--black); color: var(--on-black); }
 table.ops td { padding: 12px 10px; }
 
 
@@ -496,13 +511,13 @@ table.sched tr.paid td { color: var(--muted); }
 
 /* правки по аудиту: компактная таблица графика в узкой колонке, подпись шага заявки */
 table.sched { font-size: 13.5px; } table.sched th { padding: 10px 8px; white-space: nowrap; } table.sched td { padding: 10px 8px; white-space: nowrap; }
-.substep { margin: 4px 0 18px; display: flex; align-items: center; gap: 10px; } .substep .chip { background: var(--ink); color: #fff; }
+.substep { margin: 4px 0 18px; display: flex; align-items: center; gap: 10px; } .substep .chip { background: var(--black); color: var(--on-black); }
 
 /* главная клиента: разделы */
 .card.head { padding: 24px 24px 20px; } .card.head h1 { margin-bottom: 4px; } .card.head .row { margin-bottom: 18px; }
 .card.head .ptabs { background: var(--soft); } .card.head .ptab:hover { background: var(--line); } .client-tabs .ptab { padding: 10px 18px; font-size: 15px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
 .client-tabs .cnt { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; background: var(--line); color: var(--ink); }
-.client-tabs .cnt.hot { background: var(--accent); color: #fff; } .client-tabs .ptab.sel .cnt { background: rgba(255,255,255,.18); color: #fff; }
+.client-tabs .cnt.hot { background: var(--accent); color: #fff; } .client-tabs .ptab.sel .cnt { background: var(--accent); color: #fff; }
 .tiles.g4 { grid-template-columns: repeat(4, 1fr); }
 a.tile { display: block; color: inherit; text-decoration: none; transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
 a.tile:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -14px rgba(0,0,0,.25); }

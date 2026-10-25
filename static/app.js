@@ -442,7 +442,7 @@ function prepayCalc(l) {
   const left = l.outstanding - extra, curInt = P * rem - l.outstanding;
   const newP = annuity(left, r, rem), savePay = curInt - (newP * rem - left);
   const nNew = left * r < P ? Math.max(1, Math.ceil(-Math.log(1 - left * r / P) / Math.log(1 + r))) : rem, saveTerm = curInt - (P * nNew - left);
-  return h`<details class="prepay mt"><summary><b>Погасить досрочно</b> <span class="muted small">· предварительный расчёт: уменьшить платёж или сократить срок</span></summary>
+  return h`<details class="prepay island mt"><summary><b>Погасить досрочно</b> <span class="muted small">· предварительный расчёт: уменьшить платёж или сократить срок</span></summary>
     <div class="calc-field mt"><label for="pp-${l.app_id}">Сумма досрочного взноса, ₽</label>
       <input id="pp-${l.app_id}" type="number" min="${step}" max="${l.outstanding - P}" step="${step}" value="${extra}" data-act="prepay-amt" data-app="${l.app_id}" data-fresh="1">
       <input type="range" min="${step}" max="${l.outstanding - P}" step="${step}" value="${extra}" data-act="prepay-amt" data-app="${l.app_id}" aria-label="Сумма досрочного взноса" data-fresh="1"></div>
@@ -559,7 +559,7 @@ function paintNew() {
   render(h`${raw(topbar())}<main class="wrap" style="max-width:860px"><a href="#/client" class="small">← Главная</a><h1 class="mt">Новая заявка</h1>
     <ol class="stepper">${["Заявка", "Проверка", "Решение", "Подписание", "Выдача"].map((s, i) => raw(`<li data-n="${i + 1}" class="${i === 0 ? "now" : ""}">${esc(s)}</li>`))}</ol>
     <div class="substep mb" aria-label="Шаги заявки"><span class="chip">Шаг ${d.step} из ${steps.length}</span> <span class="muted small">${steps[d.step - 1]}</span></div>
-    <div class="card ${d.step === 1 || d.step === 2 ? "calc" : ""}">${body}</div></main>`);
+    <div class="card ${d.step === 1 || d.step === 2 ? "calc island" : ""}">${body}</div></main>`);
 }
 
 function paintRange(r) { const k = (r.value - r.min) / (r.max - r.min) * 100; r.style.setProperty("--fill", k + "%"); }
@@ -630,7 +630,7 @@ function offerCard(a) {
   const o = a.offer, limit = o.payment == null;
   const chg = (x, y) => (x !== y ? "chg" : "");
   const down = o.product && o.product !== a.product;
-  return h`<div class="card mt"><div class="row between wrapx"><h2>${down ? "Предлагаем другой продукт" : o.type === "AS_REQUESTED" ? "Одобрено на запрошенных условиях" : "Одобрено на других условиях"}</h2>
+  return h`<div class="card mt island"><div class="row between wrapx"><h2>${down ? "Предлагаем другой продукт" : o.type === "AS_REQUESTED" ? "Одобрено на запрошенных условиях" : "Одобрено на других условиях"}</h2>
       <span class="chip ${o.type === "AS_REQUESTED" ? "ok" : "warn"}">${down ? "Другой продукт" : o.type === "AS_REQUESTED" ? "Одобрено" : "Другие условия"}</span></div>
     ${down ? h`<div class="notice warn mb">Запрошенный продукт на таких условиях не подходит. Мы подобрали «${o.product_title}» — он лучше соответствует вашей платёжеспособности и уровню риска. Можно принять предложение или подать новую заявку с другими параметрами.</div>` : ""}
     ${o.type === "COUNTER" ? h`<div class="notice warn mb">Мы подобрали условия, при которых платёж будет для бизнеса комфортным. ${o.term !== a.term ? "Срок увеличен — ставка для более длинного срока немного выше." : ""}</div>` : ""}
