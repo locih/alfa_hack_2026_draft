@@ -89,10 +89,14 @@ function render(view) {
     lastHash = location.hash;
     const r = root();
     r.classList.remove("enter", "leaving"); void r.offsetWidth;
-    r.querySelectorAll(".acc, .card, .tile, .prod, .roles h2").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
-    r.querySelectorAll(".bars .fill, table.t tbody tr").forEach((el, i) => el.style.setProperty("--j", Math.min(i, 24)));
+    // каскад только для того, что видно без прокрутки; остальное появляется сразу, чтобы при скролле не было пустых мест
+    const vh = window.innerHeight || 800;
+    r.querySelectorAll(".acc, .card, .tile, .prod, .roles h2, table.t tbody tr, .bars .fill").forEach((el, i) => {
+      const top = el.getBoundingClientRect().top;
+      if (top < vh) { el.classList.add("cascade"); el.style.setProperty("--i", Math.min(i, 6)); } else { el.classList.remove("cascade"); el.style.removeProperty("--i"); }
+    });
     r.classList.add("enter");
-    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 2000);
+    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 1500);
     animateCounts(r);
   }
 }
@@ -164,7 +168,6 @@ async function viewLogin() {
       <h1>Кредит для бизнеса без лишних шагов</h1>
       <p class="lead">Подбор продукта по задаче, заявка за три минуты, живой статус и понятное решение. Для банка — та же заявка, скоринг по факторам и ручной разбор в одном окне.</p>
       <div class="tags"><span class="chip accent">Прототип · Альфа-Будущее Хакатон 2026</span><span class="chip">Данные синтетические</span><span class="chip">БКИ, ЕГРЮЛ, ФНС — моки</span></div>
-      <div class="hero-3d" id="hero3d" aria-hidden="true"><img class="hero-fallback" src="img/hero-3d.webp" alt="" width="1400" height="1050" decoding="async"></div>
     </div>
     <div class="roles">
       ${d ? h`<h2>Клиенты</h2>${clients.map(acc)}<h2>Банк</h2>${bank.map(acc)}` : h`<div class="notice plate mb">Демо-режим выключен. Войдите под своей учётной записью.</div>`}
@@ -176,15 +179,6 @@ async function viewLogin() {
           ${d ? h`<p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p>` : ""}</form></details>
       <p class="foot">Подписание и выдача имитируются, реальных операций нет. Учебный прототип команды, не сервис банка.</p>
     </div></div>`);
-  mountHero();
-}
-let heroDispose = null;
-function mountHero() {
-  const box = document.getElementById("hero3d"); if (!box) return;
-  if (heroDispose) { heroDispose(); heroDispose = null; }
-  const gl = (() => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; } })();
-  if (!gl) return;
-  import("./hero3d.js").then((m) => { if (!document.getElementById("hero3d")) return; heroDispose = m.mount(box); box.classList.add("live"); }).catch((e) => console.warn("3D-сцена не загрузилась, показываем картинку", e));
 }
 async function doLogin(login, password) {
   try {
@@ -738,6 +732,6 @@ document.addEventListener("change", (e) => {
   if (el.dataset.bindC && draft) { draft.consents[el.dataset.bindC] = el.checked; const b = $('[data-act="submit-app"]'); if (b) b.disabled = !(draft.consents.pd && draft.consents.bureau && draft.consents.fns); }
   if (el.id === "act") syncDecisionForm();
 });
-window.addEventListener("hashchange", () => { stopPoll(); if (heroDispose) { heroDispose(); heroDispose = null; } root().classList.add("leaving"); route(); });
+window.addEventListener("hashchange", () => { stopPoll(); root().classList.add("leaving"); clearTimeout(render._l); render._l = setTimeout(() => root().classList.remove("leaving"), 700); route(); });
 route();
 })();

@@ -101,7 +101,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .stepper li.now.good::before { background: var(--ok-fill); color: #fff; content: "✓"; }
 .stepper li.now.bad::before { background: var(--bad-fill); color: #fff; content: "✕"; }
 .stepper li.now.wait::before { background: var(--accent); color: #fff; }
-#app.enter .stepper li.done::after, #app.enter .stepper li.now::after { transform-origin: left; animation: line-grow .9s var(--ease) both; animation-delay: 350ms; }
+#app.enter .stepper li.done::after, #app.enter .stepper li.now::after { transform-origin: left; animation: line-grow .7s var(--ease) both; animation-delay: 200ms; }
 @keyframes line-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* статус-карточка */
@@ -140,20 +140,20 @@ details > summary { cursor: pointer; }
 .stat { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 12px; }
 .stat span { font-size: 13px; color: var(--muted); } .stat b { color: var(--ink); }
 @keyframes bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-#app.enter .chart .bar { transform-box: fill-box; transform-origin: bottom; animation: bar-grow 1s var(--ease) both; }
+#app.enter .chart .bar { transform-box: fill-box; transform-origin: bottom; animation: bar-grow .8s var(--ease) both; }
 #app.enter .chart .bar:nth-child(1) { animation-delay: 0ms }
-#app.enter .chart g:nth-of-type(1) .bar { animation-delay: 355ms; }
-#app.enter .chart g:nth-of-type(2) .bar { animation-delay: 410ms; }
-#app.enter .chart g:nth-of-type(3) .bar { animation-delay: 465ms; }
-#app.enter .chart g:nth-of-type(4) .bar { animation-delay: 520ms; }
-#app.enter .chart g:nth-of-type(5) .bar { animation-delay: 575ms; }
-#app.enter .chart g:nth-of-type(6) .bar { animation-delay: 630ms; }
-#app.enter .chart g:nth-of-type(7) .bar { animation-delay: 685ms; }
-#app.enter .chart g:nth-of-type(8) .bar { animation-delay: 740ms; }
-#app.enter .chart g:nth-of-type(9) .bar { animation-delay: 795ms; }
-#app.enter .chart g:nth-of-type(10) .bar { animation-delay: 850ms; }
-#app.enter .chart g:nth-of-type(11) .bar { animation-delay: 905ms; }
-#app.enter .chart g:nth-of-type(12) .bar { animation-delay: 960ms; }
+#app.enter .chart g:nth-of-type(1) .bar { animation-delay: 180ms; }
+#app.enter .chart g:nth-of-type(2) .bar { animation-delay: 210ms; }
+#app.enter .chart g:nth-of-type(3) .bar { animation-delay: 240ms; }
+#app.enter .chart g:nth-of-type(4) .bar { animation-delay: 270ms; }
+#app.enter .chart g:nth-of-type(5) .bar { animation-delay: 300ms; }
+#app.enter .chart g:nth-of-type(6) .bar { animation-delay: 330ms; }
+#app.enter .chart g:nth-of-type(7) .bar { animation-delay: 360ms; }
+#app.enter .chart g:nth-of-type(8) .bar { animation-delay: 390ms; }
+#app.enter .chart g:nth-of-type(9) .bar { animation-delay: 420ms; }
+#app.enter .chart g:nth-of-type(10) .bar { animation-delay: 450ms; }
+#app.enter .chart g:nth-of-type(11) .bar { animation-delay: 480ms; }
+#app.enter .chart g:nth-of-type(12) .bar { animation-delay: 510ms; }
 
 
 /* шаги заявки */
@@ -176,7 +176,7 @@ details > summary { cursor: pointer; }
 
 
 /* страница заявки */
-.status.card h1 { font-size: 24px; margin: 10px 0 6px; animation: rise .7s var(--ease) both; }
+.status.card h1 { font-size: 24px; margin: 10px 0 6px; animation: rise .5s var(--ease) both; }
 .status.card > .row .chip { animation: fade-in .6s var(--ease) both; }
 .hints > div { border-radius: var(--radius-xs); padding: 12px 14px; background: var(--soft); transition: background .3s var(--ease); }
 .hints > div.need { background: var(--accent-soft); border: 1px solid rgba(239,49,36,.22); }
@@ -190,7 +190,6 @@ details.card > summary { cursor: pointer; list-style: none; display: flex; gap: 
 details.card > summary::before { content: "▸"; color: var(--faint); transition: transform .25s var(--ease); display: inline-block; }
 details.card[open] > summary::before { transform: rotate(90deg); }
 .timeline li.last::before { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-.timeline li { animation: fade-in .5s var(--ease) both; }
 .code { border: 1px dashed var(--faint); background: var(--soft); border-radius: var(--radius-xs); }
 .reason .ic { width: 26px; height: 26px; }
 .spin { border-color: var(--info-soft); border-top-color: var(--info-fill); }
@@ -212,7 +211,6 @@ table.t tbody tr:last-child td { border-bottom: 0; }
 table.t tr.click { transition: background .15s var(--ease); } table.t tr.click:hover td { background: var(--soft); }
 table.t tr.click td:first-child { border-radius: var(--radius-xs) 0 0 var(--radius-xs); } table.t tr.click td:last-child { border-radius: 0 var(--radius-xs) var(--radius-xs) 0; }
 table.t tr.focus td { background: var(--warn-soft); } table.t tr.focus:hover td { background: #ffe6c2; }
-#app.enter table.t tbody tr { animation: rise .6s var(--ease) both; animation-delay: calc(250ms + var(--j, 0) * 45ms); }
 .grade { border-radius: 8px; }
 .scorebig { font-weight: 700; }
 .bars .b { padding: 6px 0; }
@@ -220,7 +218,7 @@ table.t tr.focus td { background: var(--warn-soft); } table.t tr.focus:hover td 
 .bars .fill { transform-origin: left; transition: transform .3s var(--ease); }
 .bars .fill.mid { background: var(--warn-fill); } .bars .fill.low { background: var(--bad-fill); } .bars .fill { background: var(--ok-fill); }
 @keyframes fill-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-#app.enter .bars .fill, #bankview .bars .fill { animation: fill-grow 1s var(--ease) both; animation-delay: calc(300ms + var(--j, 0) * 40ms); }
+#app.enter .bars .fill.cascade { animation: fill-grow .8s var(--ease) both; animation-delay: calc(100ms + var(--i, 0) * 40ms); }
 .bars h3 { color: var(--faint); font-size: 11px; letter-spacing: .6px; margin-top: 18px; }
 .card.decide { box-shadow: inset 0 3px 0 var(--info-fill); }
 .card.decide h2::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--info-fill); }
@@ -299,7 +297,7 @@ table.t tr.focus td { background: var(--warn-soft); }
 
 /* вход */
 .login { max-width: 1120px; margin: 0 auto; padding: 48px 24px 64px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(340px, 520px); gap: 48px 64px; align-items: start; }
-.login-hero { position: sticky; top: 48px; }
+.login-hero { position: sticky; top: 48px; padding-bottom: 24px; }
 .login-mark { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 15px; margin-bottom: 40px; }
 .login-mark i { width: 36px; height: 36px; border-radius: 8px; background: var(--accent); position: relative; display: inline-block; }
 .login-mark i::after { content: ""; position: absolute; left: 10px; top: 12px; width: 16px; height: 16px; border: 3px solid #fff; border-width: 3px 0 0 3px; transform: rotate(45deg) scale(.8); }
@@ -307,12 +305,6 @@ table.t tr.focus td { background: var(--warn-soft); }
 .login h1 { font-size: 44px; line-height: 1.08; letter-spacing: -.02em; margin: 0 0 16px; max-width: 13ch; }
 .login .lead { font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 42ch; margin: 0 0 20px; }
 .login .tags { display: flex; gap: 8px; flex-wrap: wrap; }
-.hero-3d { position: relative; height: 360px; margin: 16px 0 0 -48px; max-width: 600px; pointer-events: none; }
-.hero-3d canvas, .hero-3d .hero-fallback { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.hero-3d .hero-fallback { object-fit: contain; object-position: left center; transition: opacity .6s var(--ease); }
-.hero-3d.live .hero-fallback { opacity: 0; }
-.hero-3d canvas { opacity: 0; animation: fade-in .9s var(--ease) .15s forwards; }
-#app.enter .hero-3d { animation: rise 1s var(--ease) .25s both; }
 @keyframes drift { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(10px, -14px) rotate(4deg); } }
 .roles h2 { font-size: 12px; line-height: 16px; letter-spacing: 1.25px; text-transform: uppercase; color: var(--faint); margin: 20px 0 10px; font-weight: 700; }
 .roles h2:first-child { margin-top: 0; }
@@ -330,7 +322,7 @@ table.t tr.focus td { background: var(--warn-soft); }
 @media (max-width: 900px) {
   .login { grid-template-columns: 1fr; gap: 24px; padding: 24px 16px 48px; }
   .login-hero { position: static; } .login h1 { font-size: 32px; } .login .lead { font-size: 16px; }
-  .login-mark { margin-bottom: 24px; } .hero-3d { height: 240px; margin: 0; max-width: none; }
+  .login-mark { margin-bottom: 24px; }
 }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 10px; opacity: 0; transition: .25s; pointer-events: none; z-index: 20; max-width: 90vw; }
 #toast.show { opacity: 1; transform: translateX(-50%); }
@@ -345,19 +337,17 @@ table.t tr.focus td { background: var(--warn-soft); }
   .topbar .in { flex-wrap: wrap; } .wrap { padding: 16px 14px 48px; }
 }
 
-/* моушн: мягко и неспешно, как в кабинетах банков — одна кривая, каскад 70 мс, выход старого экрана перед входом нового */
-@keyframes view-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+/* моушн: мягко, но коротко. Каскад только для видимой зоны (класс .cascade ставит render), суммарно ≤ 350 мс,
+   чтобы при прокрутке ничего не оставалось скрытым. Всё отключается при prefers-reduced-motion. */
+@keyframes view-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-#app.leaving > .wrap, #app.leaving > .login { opacity: .35; transform: translateY(-6px); filter: saturate(.8); transition: opacity var(--t-base) var(--ease-io), transform var(--t-base) var(--ease-io), filter var(--t-base); }
-#app.enter > .wrap, #app.enter > .login { animation: view-in var(--t-slow) var(--ease) both; }
-#app.enter .topbar { animation: fade-in var(--t-base) var(--ease) both; }
-#app.enter .acc, #app.enter .card, #app.enter .tile, #app.enter .prod, #app.enter .roles h2, #app.enter .stepper { animation: rise .8s var(--ease) both; animation-delay: calc(120ms + var(--i, 0) * 70ms); }
-#app.enter .login-hero > * { animation: rise .9s var(--ease) both; }
-@keyframes digit-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
-[data-count] .d { display: inline-block; font: inherit; color: inherit; letter-spacing: inherit; animation: digit-in .55s var(--ease) both; animation-delay: calc(350ms + var(--g, 0) * 90ms + var(--k, 0) * 45ms); }
-#app.enter .login-hero > :nth-child(2) { animation-delay: 90ms; } #app.enter .login-hero > :nth-child(3) { animation-delay: 180ms; }
-#app.enter .login-hero > :nth-child(4) { animation-delay: 270ms; } #app.enter .login-hero > :nth-child(5) { animation-delay: 380ms; }
+#app.leaving > .wrap, #app.leaving > .login { opacity: .4; transform: translateY(-4px); transition: opacity .3s var(--ease-io), transform .3s var(--ease-io); }
+#app.enter > .wrap, #app.enter > .login { animation: view-in .5s var(--ease) both; }
+#app.enter .cascade { animation: rise .6s var(--ease) both; animation-delay: calc(var(--i, 0) * 55ms); }
+#app.enter .login-hero > * { animation: rise .7s var(--ease) both; }
+#app.enter .login-hero > :nth-child(2) { animation-delay: 60ms; } #app.enter .login-hero > :nth-child(3) { animation-delay: 120ms; }
+#app.enter .login-hero > :nth-child(4) { animation-delay: 180ms; }
 .btn, .acc, .prod { will-change: transform; }
 .btn:active { transform: scale(.98); }
 .btn.primary { box-shadow: 0 0 0 0 rgba(239,49,36,.0); transition: background .15s var(--ease), transform .15s var(--ease), box-shadow .3s var(--ease); }

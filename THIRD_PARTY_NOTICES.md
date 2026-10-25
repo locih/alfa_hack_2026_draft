@@ -47,7 +47,3 @@ LLM не используются. Основной режим (`rules`) — д�
 - `@alfalab/core-components-vars` 11.4.1 — MIT, core-ds (https://github.com/core-ds/core-components). Файлы в `static/vendor/alfa-vars/`: цвета, радиусы, отступы, тени, типографика.
 - `@alfalab/icons` 3.510.0 — MIT, core-ds. SVG в `static/vendor/alfa-icons/` извлечены из React-модулей пакета скриптом `tools/alfa_icon.py` (в репозитории хакатона).
 - Фирменные шрифты Styrene UI и Alfa Interface Sans не используются (лицензионные); текст набран системным шрифтом, как в самой дизайн-системе по умолчанию.
-
-## Three.js
-
-- `three` 0.170.0 — MIT, three.js authors (https://github.com/mrdoob/three.js). Файлы `static/vendor/three/three.module.min.js`, `RoundedBoxGeometry.js`, `LICENSE`. Используется только для декоративной сцены на экране входа; при отсутствии WebGL показывается статичная картинка `static/img/hero-3d.webp` (собственный рендер команды в Blender).
