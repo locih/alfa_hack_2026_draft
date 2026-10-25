@@ -216,12 +216,13 @@ function turnoverChart(receipts) {
   const max = Math.max(...receipts) * 1.1, W = 600, H = 150, bw = 34, gap = (W - 12 * bw) / 11;
   const avg = receipts.reduce((a, b) => a + b, 0) / receipts.length;
   return h`<div class="chart-wrap">
-    <div class="chart-head"><div class="chart-info"><span class="muted small">Наведите на столбик, чтобы увидеть месяц</span></div>
+    <div class="chart-head"><div class="chart-info"><span class="muted small">Наведите на столбик, чтобы увидеть месяц · пунктир — среднее ${rub(Math.round(avg))}</span></div>
       <button class="btn sm" data-act="receipts-details">Детали поступлений</button></div>
-    <svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев">
+    <svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев"><defs><linearGradient id="vgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a85ff"/><stop offset="1" stop-color="#5a3df0"/></linearGradient><linearGradient id="ggrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff4d"/><stop offset="1" stop-color="#8fd400"/></linearGradient></defs>
+    <line class="r-avg" x1="0" x2="${W}" y1="${H - (avg / max) * H}" y2="${H - (avg / max) * H}"/>
     ${receipts.map((v, i) => {
       const dt = monthOf(i), bh = Math.max(3, (v / max) * H), x = i * (bw + gap), prev = i ? receipts[i - 1] : null;
-      return h`<g class="bar-g" tabindex="0" data-i="${i}" data-v="${v}" data-m="${monthName(dt)}" data-prev="${prev ?? ""}" data-avg="${Math.round(avg)}"><rect class="bar ${i < 6 ? "prev" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
+      return h`<g class="bar-g" tabindex="0" data-i="${i}" data-v="${v}" data-m="${monthName(dt)}" data-prev="${prev ?? ""}" data-avg="${Math.round(avg)}"><rect class="bar ${i === 11 ? "now" : v < avg ? "low" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
         <rect class="bar-hit" x="${x - gap / 2}" y="0" width="${bw + gap}" height="${H + 22}"></rect>
         <text x="${x + bw / 2}" y="${H + 15}" text-anchor="middle">${monthName(dt, false)}</text></g>`;
     })}</svg></div>`;
@@ -473,30 +474,48 @@ function newsBlock() {
 
 
 // ---------- «Финансовый радар»: факт 12 мес. + прогноз 3 мес. + траектория остатка на 90 дней ----------
+const RADAR_RANGES = { q: [3, "Квартал"], h: [6, "Полгода"], y: [12, "Год"] };
+let radarRange = (() => { try { return RADAR_RANGES[localStorage.getItem("radar-range")] ? localStorage.getItem("radar-range") : "q"; } catch { return "q"; } })();
 function radarChart(f) {
-  const W = 600, H = 150, n = 15, bw = 28, gap = (W - n * bw) / (n - 1);
-  const vals = [...f.fact, ...f.months.map((m) => m.receipts)];
+  const factN = RADAR_RANGES[radarRange][0], off = 12 - factN, fact = f.fact.slice(off);
+  const W = 600, H = 120, n = factN + 3, gap = factN > 6 ? 10 : 14, bw = (W - (n - 1) * gap) / n;
+  const vals = [...fact, ...f.months.map((m) => m.receipts)];
   const max = Math.max(...vals) * 1.08;
   const y = (v) => H - Math.max(0, v) / max * H, x = (i) => i * (bw + gap);
-  // у линии остатка своя шкала: от минимума траектории (или нуля) до максимума, в пределах зоны прогноза
-  const bal = f.path.map((p) => p.balance), bmin = Math.min(0, ...bal, f.cushion), bmax = Math.max(...bal, f.balance, f.cushion) * 1.05 || 1;
-  const yb = (v) => 8 + (H - 16) * (1 - (v - bmin) / (bmax - bmin));
-  const fx0 = x(12), fw = 3 * (bw + gap) - gap;
-  const px = (day) => fx0 + (day / f.horizon_days) * fw;
-  const pts = [[fx0, yb(f.balance)], ...f.path.map((p, i) => [px(i + 1), yb(p.balance)])];
-  const line = pts.map(([a, b], i) => (i ? "L" : "M") + a.toFixed(1) + " " + b.toFixed(1)).join(" ");
-  const gapPt = f.gap ? pts[f.gap.day] : null;
-  return h`<svg class="chart rchart" viewBox="0 0 ${W} ${H + 24}" role="img" aria-label="Поступления за 12 месяцев, прогноз на 3 месяца и остаток на счёте на 90 дней">
+  const fx0 = x(factN), fw = 3 * (bw + gap) - gap;
+  const avg = f.fact.reduce((a2, b2) => a2 + b2, 0) / f.fact.length;
+  return h`<svg class="chart rchart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления за 12 месяцев и прогноз на 3 месяца"><defs><linearGradient id="vgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a85ff"/><stop offset="1" stop-color="#5a3df0"/></linearGradient><linearGradient id="ggrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff4d"/><stop offset="1" stop-color="#8fd400"/></linearGradient></defs>
     <rect class="r-fzone" x="${fx0 - gap / 2}" y="0" width="${fw + gap}" height="${H}" rx="8"/>
-    ${vals.map((v, i) => h`<g style="--i:${i}"><rect class="bar ${i < 12 ? "" : "fc"}" x="${x(i)}" y="${y(v)}" width="${bw}" height="${(H - y(v)).toFixed(1)}" rx="5"/>
-      ${i >= 12 && f.months[i - 12].high ? h`<line class="r-band" x1="${x(i) + bw / 2}" x2="${x(i) + bw / 2}" y1="${y(f.months[i - 12].high)}" y2="${y(f.months[i - 12].low)}"/><line class="r-band" x1="${x(i) + bw / 2 - 5}" x2="${x(i) + bw / 2 + 5}" y1="${y(f.months[i - 12].high)}" y2="${y(f.months[i - 12].high)}"/><line class="r-band" x1="${x(i) + bw / 2 - 5}" x2="${x(i) + bw / 2 + 5}" y1="${y(f.months[i - 12].low)}" y2="${y(f.months[i - 12].low)}"/>` : ""}
-      <text x="${x(i) + bw / 2}" y="${H + 16}" text-anchor="middle">${i < 12 ? monthName(monthOf(i), false) : monthName(new Date(f.months[i - 12].month + "-01"), false) + "*"}</text></g>`)}
-    <line class="r-cushion" x1="${fx0}" x2="${fx0 + fw}" y1="${yb(f.cushion)}" y2="${yb(f.cushion)}"/>
-    ${bmin < 0 ? h`<line class="r-zero" x1="${fx0}" x2="${fx0 + fw}" y1="${yb(0)}" y2="${yb(0)}"/>` : ""}
-    <text class="r-axis" x="${fx0 + fw}" y="${yb(bmax / 1.05) - 2}" text-anchor="end">${Math.round(bmax / 1.05 / 1e6 * 10) / 10} млн ₽</text>
-    ${f.payments.filter((p) => p.kind !== "opex").map((p) => h`<line class="r-pay" x1="${px(dayIndex(f.today, p.date))}" x2="${px(dayIndex(f.today, p.date))}" y1="${H - 6}" y2="${H}"><title>${dateOnly(p.date)} · ${rub(p.amount)}</title></line>`)}
-    <path class="r-path" d="${line}"/>
-    ${gapPt ? h`<circle class="r-gap" cx="${gapPt[0]}" cy="${gapPt[1]}" r="5"/>` : ""}
+    <line class="r-avg" x1="0" x2="${W}" y1="${y(avg)}" y2="${y(avg)}"/>
+    ${vals.map((v, i) => h`<g style="--i:${i}"><rect class="bar ${i >= factN ? "fc" : i === factN - 1 ? "now" : v < avg ? "low" : ""}" x="${x(i)}" y="${y(v)}" width="${bw.toFixed(1)}" height="${(H - y(v)).toFixed(1)}" rx="5"/>
+      ${i >= factN && f.months[i - factN].high ? h`<line class="r-band" x1="${x(i) + bw / 2}" x2="${x(i) + bw / 2}" y1="${y(f.months[i - factN].high)}" y2="${y(f.months[i - factN].low)}"/>` : ""}
+      <text x="${x(i) + bw / 2}" y="${H + 15}" text-anchor="middle">${i < factN ? monthName(monthOf(i + off), false) : monthName(new Date(f.months[i - factN].month + "-01"), false) + "*"}</text></g>`)}
+  </svg>`;
+}
+// остаток на счёте на 90 дней — отдельный широкий график: плавная область, подушка, платежи, даты
+function balanceChart(f) {
+  const W = 600, H = 110, padL = 2, padR = 2;
+  const bal = f.path.map((p) => p.balance), vmin = Math.min(0, ...bal, f.cushion), vmax = Math.max(...bal, f.balance, f.cushion) * 1.06 || 1;
+  const yb = (v) => 6 + (H - 12) * (1 - (v - vmin) / (vmax - vmin)), px = (day) => padL + (day / f.horizon_days) * (W - padL - padR);
+  const pts = [[px(0), yb(f.balance)], ...f.path.map((p, i) => [px(i + 1), yb(p.balance)])];
+  // сглаживание квадратичными кривыми через середины отрезков
+  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length - 1; i++) { const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; d += ` Q${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`; }
+  d += ` L${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}`;
+  const area = d + ` L${px(f.horizon_days)} ${H} L${px(0)} ${H} Z`;
+  const gapPt = f.gap ? pts[f.gap.day] : null, fmt = (v) => (Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace(".", ",") + " млн" : Math.round(v / 1e3) + " тыс.");
+  const ticks = [0, 30, 60, 90].map((dd) => [dd, new Date(new Date(f.today).getTime() + dd * 864e5)]);
+  return h`<svg class="bchart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Остаток на счёте на 90 дней вперёд">
+    <defs><linearGradient id="bgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--chart-b)" stop-opacity=".45"/><stop offset="1" stop-color="var(--chart-b)" stop-opacity="0"/></linearGradient></defs>
+    ${vmin < 0 ? h`<rect class="b-neg" x="${px(0)}" y="${yb(0)}" width="${W - padL - padR}" height="${(H - yb(0)).toFixed(1)}"/>` : ""}
+    <path class="b-area" d="${area}"/><path class="b-line" d="${d}"/>
+    <line class="r-cushion" x1="${px(0)}" x2="${px(f.horizon_days)}" y1="${yb(f.cushion)}" y2="${yb(f.cushion)}"/>
+    <text class="b-lbl" x="${px(f.horizon_days)}" y="${yb(f.cushion) - 4}" text-anchor="end">подушка ${fmt(f.cushion)}</text>
+    ${vmin < 0 ? h`<line class="r-zero" x1="${px(0)}" x2="${px(f.horizon_days)}" y1="${yb(0)}" y2="${yb(0)}"/>` : ""}
+    ${f.payments.filter((p) => p.kind === "loan").map((p) => h`<g class="b-pay"><line x1="${px(dayIndex(f.today, p.date))}" x2="${px(dayIndex(f.today, p.date))}" y1="${H - 8}" y2="${H}"/><title>${dateOnly(p.date)} · платёж по кредиту ${rub(p.amount)}</title></g>`)}
+    ${gapPt ? h`<circle class="r-gap" cx="${gapPt[0]}" cy="${gapPt[1]}" r="5"><title>${dateOnly(f.gap.date)} · остаток ниже подушки</title></circle>` : ""}
+    <circle class="b-now" cx="${pts[0][0]}" cy="${pts[0][1]}" r="4"/>
+    ${ticks.map(([dd, dt]) => h`<text x="${px(dd)}" y="${H + 16}" text-anchor="${dd === 0 ? "start" : dd === 90 ? "end" : "middle"}">${dd === 0 ? "сегодня" : dt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</text>`)}
   </svg>`;
 }
 const dayIndex = (today, iso) => Math.round((new Date(iso) - new Date(today)) / 864e5);
@@ -512,9 +531,13 @@ function radarCard(f, prod) {
       <span>Свободно до <b class="num">${rub(f.free_cash)}</b> сверх подушки ${rub(f.cushion)} — можно вкладывать в закупку или развитие без заёмных денег.</span>
       <a class="btn" href="#/client/products">Посмотреть предложения →</a></div>`;
   return h`<div class="card radar"><div class="row between wrapx"><div><h2>Финансовый радар</h2><div class="muted small">Поступления за 12 месяцев, прогноз на 3 и остаток на счёте на 90 дней вперёд</div></div>
-      <div class="ptabs scn">${scn.map(([v, t]) => h`<button class="ptab ${v === f.scenario ? "sel" : ""}" data-act="radar-scn" data-v="${v}">${t}</button>`)}</div></div>
+      <div class="row wrapx" style="gap:8px"><div class="ptabs scn" aria-label="Диапазон">${Object.entries(RADAR_RANGES).map(([k, [, t]]) => h`<button class="ptab ${k === radarRange ? "sel" : ""}" data-act="radar-range" data-k="${k}">${t}</button>`)}</div>
+      <div class="ptabs scn" aria-label="Сценарий">${scn.map(([v, t]) => h`<button class="ptab ${v === f.scenario ? "sel" : ""}" data-act="radar-scn" data-v="${v}">${t}</button>`)}</div></div></div>
     ${radarChart(f)}
-    <div class="r-legend small muted"><span><i class="sw t"></i>поступления</span><span><i class="sw tf"></i>прогноз*</span><span><i class="sw g"></i>остаток на счёте</span><span><i class="sw gd"></i>подушка — месяц обязательных платежей</span><span><i class="sw r"></i>платежи по кредитам</span></div>
+    <div class="r-legend small muted"><span><i class="sw t"></i>поступления</span><span><i class="sw now"></i>текущий месяц</span><span><i class="sw tf"></i>прогноз* с коридором</span><span><i class="sw gd"></i>среднее за год ${rub(Math.round(f.fact.reduce((a2, b2) => a2 + b2, 0) / 12))}</span></div>
+    <div class="r-sub"><b>Остаток на счёте, 90 дней</b> <span class="muted small">· сейчас ${rub(f.balance)} · минимум ${rub(Math.min(...f.path.map((p) => p.balance)))}</span></div>
+    ${balanceChart(f)}
+    <div class="r-legend small muted"><span><i class="sw g"></i>остаток на счёте</span><span><i class="sw gd"></i>подушка — месяц обязательных платежей</span><span><i class="sw r"></i>платежи по кредитам</span></div>
     ${msg}
     ${f.factors ? h`<details class="r-factors"><summary><b>Что учитывает радар</b> <span class="muted small">· рынок, активность, финансы, репутация · подушка ×${f.cushion_multiplier}, коридор ±${Math.round(f.band * 100)} %</span></summary>
       <div class="r-fgrid">${f.factors.map((x) => h`<div class="r-f ${x.effect.startsWith("без") || x.effect.startsWith("коридор") ? "" : "warn"}"><b>${x.title}</b><span>${x.value}</span><em>${x.effect}</em><small>в проде: ${x.source}</small></div>`)}</div></details>` : ""}
@@ -1026,6 +1049,7 @@ const act = {
   "loan-pick": (el) => { loanIdx = +el.dataset.i; repaintSection(); },
   "news-prev": () => { const t = $("[data-news]"); t?.scrollBy({ left: -(t.clientWidth - 40), behavior: "smooth" }); },
   "news-next": () => { const t = $("[data-news]"); t?.scrollBy({ left: t.clientWidth - 40, behavior: "smooth" }); },
+  "radar-range": (el) => { radarRange = el.dataset.k; try { localStorage.setItem("radar-range", radarRange); } catch { /* приватный режим */ } const card = $(".card.radar"); if (card && window.__client) { card.outerHTML = radarCard(window.__client.forecast, window.__client.prod).s; $(".card.radar")?.classList.add("in"); } },
   "radar-scn": async (el) => {
     const v = +el.dataset.v; if (!window.__client) return;
     try { window.__client.forecast = await api("/client/forecast?scenario=" + v); } catch (e) { toast(e.message, true); return; }

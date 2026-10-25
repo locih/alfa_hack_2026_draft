@@ -417,10 +417,10 @@ table.t tr.focus td { background: var(--warn-soft); }
 .chart-info .chart-sum { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
 .chart-delta { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--soft); color: var(--muted); }
 .chart-delta.up { background: var(--ok-soft); color: var(--ok); } .chart-delta.down { background: var(--bad-soft); color: var(--bad); }
-.chart .bar { fill: var(--chart-a); opacity: .92; transition: opacity .35s var(--ease), fill .35s var(--ease); } .chart .bar.prev { fill: var(--chart-a); opacity: .45; }
+.chart .bar { fill: url(#vgrad); opacity: .95; transition: opacity .35s var(--ease), fill .35s var(--ease); } .chart .bar.low { opacity: .5; } .chart .bar.now { fill: url(#ggrad); }
 .chart .bar-hit { fill: transparent; cursor: pointer; }
 .chart .bar-g { outline: none; } .chart .bar-g:focus-visible .bar { stroke: var(--info-fill); stroke-width: 2; }
-.chart-wrap.hovering .bar { opacity: .3; } .chart-wrap.hovering .bar-g.on .bar { opacity: 1; fill: var(--chart-b); }
+.chart-wrap.hovering .bar { opacity: .3; } .chart-wrap.hovering .bar-g.on .bar { opacity: 1; fill: url(#ggrad); }
 .chart-wrap.hovering .bar-g.on text { fill: var(--ink); font-weight: 700; }
 /* модальное окно */
 #modal { position: fixed; inset: 0; z-index: 60; background: rgba(15,15,16,.45); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 24px; animation: fade-in .4s var(--ease) both; }
@@ -604,7 +604,8 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .growth li > div { display: flex; flex-direction: column; } .growth .eff { font-weight: 700; color: var(--ok); white-space: nowrap; }
 /* рост графиков при появлении раздела и экрана */
 #app.enter .rchart .bar, #ctab.in .chart .bar, #ctab.in .rchart .bar, .card.radar.in .bar { transform-box: fill-box; transform-origin: bottom; animation: bar-grow 1.2s var(--ease) both; animation-delay: calc(var(--i, 0) * 55ms); }
-#app.enter .r-path, #ctab.in .r-path, .card.radar.in .r-path { stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: draw-line 2.2s var(--ease) .9s forwards; }
+#app.enter .b-line, #ctab.in .b-line, .card.radar.in .b-line { stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: draw-line 2.2s var(--ease) .9s forwards; }
+#app.enter .b-area, #ctab.in .b-area, .card.radar.in .b-area { animation: fade-in 1.4s var(--ease) 1.6s both; }
 @keyframes draw-line { to { stroke-dashoffset: 0; } }
 #app.enter .r-gap, #ctab.in .r-gap, .card.radar.in .r-gap { animation: fade-in .6s var(--ease) 2.6s both; }
 #ctab.in .sv-col span { transform-origin: bottom; animation: fill-grow 1.35s var(--ease) both; }
@@ -629,3 +630,12 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .r-f { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: var(--radius-xs); background: var(--soft); font-size: 13px; }
 .r-f b { font-size: 14px; } .r-f em { font-style: normal; color: var(--ok); font-weight: 600; } .r-f.warn em { color: var(--warn); } .r-f small { color: var(--faint); }
 @media (max-width: 600px) { .r-fgrid { grid-template-columns: 1fr; } }
+
+.bchart { width: 100%; height: auto; margin-top: 6px; } .r-sub { margin-top: 14px; }
+.b-area { fill: url(#bgrad); } .b-line { fill: none; stroke: var(--chart-b); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.b-neg { fill: var(--bad); opacity: .12; } .b-pay line { stroke: var(--accent); stroke-width: 3; } .b-now { fill: var(--ink); }
+.b-lbl { fill: var(--muted); font-size: 10px; } .bchart text { fill: var(--muted); font-size: 11px; }
+.r-avg { stroke: var(--chart-line); stroke-width: 1; stroke-dasharray: 4 4; opacity: .45; } .r-avg-lbl { fill: var(--muted); font-size: 10px; }
+.sw.t { background: linear-gradient(180deg, #9a85ff, #5a3df0); }
+.r-avg-lbl { paint-order: stroke; stroke: var(--card); stroke-width: 3px; }
+.sw.now { background: linear-gradient(180deg, #c6ff4d, #8fd400); }
