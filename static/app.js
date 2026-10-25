@@ -174,7 +174,7 @@ async function viewLogin() {
           <div class="tags"><span class="chip dark">Прототип · Альфа-Будущее Хакатон 2026</span><span class="chip dark">Данные синтетические</span><span class="chip dark">БКИ, ЕГРЮЛ, ФНС — моки</span></div>
           <a class="btn primary lg" href="#roles" data-act="scroll-roles">Выбрать роль и войти</a>
         </div>
-        <div class="hero-art" aria-hidden="true"><img src="img/hero.webp" alt="" width="1200" height="900" decoding="async" onerror="this.remove()"></div>
+        <div class="hero-art" aria-hidden="true"><img src="img/hero-logo.webp" alt="" width="1024" height="1024" decoding="async" onerror="this.remove()"></div>
       </div>
     </div></header>
     <section class="sheet" id="roles"><div class="in">
@@ -329,7 +329,7 @@ function feedBlock(prof, prod, active) {
     const best = prof.preapproval.filter((p) => p.available && prod[p.product]?.eligible).sort((a, b) => b.max_amount - a.max_amount)[0];
     const key = best && `pre-${best.product}-${best.max_amount}`;
     if (best && !feedHidden(key)) cards.push(h`<article class="fcard" data-key="${key}" style="--i:${cards.length}">
-      <span class="fico soft" aria-hidden="true">${PRODUCT_ICON[best.product]}</span>
+      <img class="fico img" src="img/products/${best.product}.webp" alt="" width="512" height="512" loading="lazy" decoding="async">
       <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
       <div class="fbody"><div class="ftitle">Предодобрено до ${rub(best.max_amount)}</div>
       <p class="ftext">${prod[best.product].title} · ставка от ${pct(best.rate_from)} · по оборотам, которые банк уже видит. Без справок и визита.</p>
@@ -373,7 +373,7 @@ function clientSection(k, c) {
     <p class="muted small">Предварительная оценка по вашим оборотам — не гарантия: итоговые условия назовёт банк после проверки заявки.</p>
     <div class="grid g4 mb">${prof.preapproval.map((p) => {
       const pr = prod[p.product];
-      const head = h`<span class="pic lg" aria-hidden="true">${PRODUCT_ICON[p.product]}</span><h3>${pr.title}</h3>`;
+      const head = h`<img class="pimg" src="img/products/${p.product}.webp" alt="" width="512" height="512" loading="lazy" decoding="async"><h3>${pr.title}</h3>`;
       if (!pr.eligible) return h`<div class="card flat pcard">${head}<p class="muted small">Программа для МСП приоритетных отраслей — для вашей компании недоступна.</p></div>`;
       return h`<div class="card flat pcard">${head}
         ${p.available ? h`<div class="big num" data-count="${p.max_amount}" data-prefix="до ">до ${rub(p.max_amount)}</div><div class="muted small">ставка от ${pct(p.rate_from)}</div>
@@ -381,7 +381,7 @@ function clientSection(k, c) {
           : h`<p class="muted small">${p.message}</p><button class="btn" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Подать заявку</button>`}</div>`;
     })}</div>
     <div class="card flat"><div class="row between wrapx"><div><h3>Не знаете, какой продукт нужен?</h3><p class="muted small" style="margin:0">Опишите задачу — подскажем продукт, сумму и срок, которые укладываются в платёжеспособность.</p></div>
-      <button class="btn" data-act="new-app" ${active ? "disabled" : ""}>Подобрать по задаче</button></div></div>`;
+      <button class="btn violet" data-act="new-app" ${active ? "disabled" : ""}>Подобрать по задаче</button></div></div>`;
 
   if (k === "receipts") return h`<div class="card"><h2>Поступления на счёт за 12 месяцев</h2>
       ${turnoverChart(prof.receipts)}
@@ -397,7 +397,7 @@ function clientSection(k, c) {
     <div class="tiles g4 mb">
       ${loan ? h`<a class="tile" href="#/client/loans"><span>Ближайший платёж</span><b data-count="${loan.next_payment.amount}">${rub(loan.next_payment.amount)}</b><span>до ${dateOnly(loan.next_payment.date)} · остаток ${rub(loan.outstanding)}</span></a>`
              : h`<a class="tile" href="#/client/loans"><span>Кредиты</span><b>${apps.length ? apps.length : "—"}</b><span>${apps.length ? plural(apps.length, "заявка", "заявки", "заявок") + " в истории" : "действующих кредитов нет"}</span></a>`}
-      <a class="tile" href="#/client/products"><span>Предодобрено</span><b data-count="${best?.max_amount ?? 0}" data-prefix="до ">${best ? "до " + rub(best.max_amount) : "—"}</b><span>${best ? prod[best.product].title + " · от " + pct(best.rate_from) : "подайте заявку — рассмотрим вручную"}</span></a>
+      <a class="tile violet" href="#/client/products"><span>Предодобрено</span><b data-count="${best?.max_amount ?? 0}" data-prefix="до ">${best ? "до " + rub(best.max_amount) : "—"}</b><span>${best ? prod[best.product].title + " · от " + pct(best.rate_from) : "подайте заявку — рассмотрим вручную"}</span></a>
       <a class="tile" href="#/client/receipts"><span>Поступления, ${monthName(monthOf(last), false)}</span><b data-count="${prof.receipts[last]}">${rub(prof.receipts[last])}</b><span>${dl >= 0 ? "+" : ""}${dl} % к прошлому месяцу · среднее ${rub(prof.avg_receipts)}</span></a>
       <a class="tile" href="#/client/receipts"><span>Платёжная нагрузка</span><b>${prof.avg_receipts ? Math.round(prof.existing_payments / prof.avg_receipts * 100) : 0} %</b><span>платежи по кредитам ${rub(prof.existing_payments)} от среднего поступления</span></a>
     </div>
@@ -452,7 +452,7 @@ function paintNew() {
       </div><div class="task-right">
       <h3 class="task-title">Подходящий продукт</h3>${rec ? h`<p class="muted small">По вашей цели рекомендуем «${prod[rec].title}» — отмечено ниже.</p>` : h`<p class="muted small">Выберите задачу слева — подскажем продукт.</p>`}
       <div class="grid g2">${d.cat.products.map((x) => h`<button class="prod ${d.product === x.id ? "sel" : ""}" data-act="pick-product" data-id="${x.id}" ${x.eligible ? "" : "disabled"}>
-        <h3><span class="pic sm" aria-hidden="true">${PRODUCT_ICON[x.id]}</span>${x.title} ${rec === x.id ? raw('<span class="chip accent">рекомендуем</span>') : ""} ${x.id === "preferential" && x.eligible ? raw('<span class="chip ok">вам доступно</span>') : ""}</h3>
+        <img class="pimg sm" src="img/products/${x.id}.webp" alt="" width="512" height="512" loading="lazy" decoding="async"><h3>${x.title} ${rec === x.id ? raw('<span class="chip accent">рекомендуем</span>') : ""} ${x.id === "preferential" && x.eligible ? raw('<span class="chip ok">вам доступно</span>') : ""}</h3>
         <div class="muted small">${x.tagline}</div>
         <div class="small mt">${x.kind === "limit" ? "Лимит" : "Сумма"}: ${rub(x.min_amount)} – ${rub(x.max_amount)}${x.kind === "limit" ? "" : " · срок " + x.min_term + "–" + x.max_term + " мес."}</div>
         ${x.eligible ? "" : h`<div class="small" style="color:var(--bad)">Недоступно для вашей компании</div>`}</button>`)}</div></div></div>

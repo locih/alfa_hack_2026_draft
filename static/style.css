@@ -11,6 +11,7 @@
   --warn: #c96b00; --warn-fill: var(--color-light-status-attention, #fa9313); --warn-soft: #ffefd9;
   --bad: #d72505; --bad-fill: var(--color-light-status-negative, #ff4837); --bad-soft: #ffebeb;
   --info: #2c64d4; --info-fill: var(--color-light-status-info, #2288fa); --info-soft: #e4f0ff;
+  --violet: var(--color-static-brand-violet, #6a4dff); --violet-hover: #5a3df0; --violet-soft: #efecff; --violet-ink: #4a30c9;
   --radius: var(--border-radius-20, 20px); --radius-s: var(--border-radius-16, 16px); --radius-xs: var(--border-radius-12, 12px);
   --shadow: none; --shadow-hover: var(--shadow-xs, 0 4px 8px rgba(0,0,0,.04), 0 0 1px rgba(0,0,0,.04));
   --ease: cubic-bezier(.16,1,.3,1); --ease-io: cubic-bezier(.65,0,.35,1); --t-fast: 0.45s; --t-base: 1.01s; --t-slow: 1.58s;
@@ -350,7 +351,7 @@ table.t tr.focus td { background: var(--warn-soft); }
 .chip.dark { background: rgba(255,255,255,.1); color: rgba(255,255,255,.85); }
 .btn.lg { padding: 18px 28px; font-size: 16px; border-radius: 14px; display: inline-block; text-decoration: none; }
 .hero-art { position: relative; min-height: 320px; display: flex; align-items: center; justify-content: center; }
-.hero-art img { width: 100%; max-width: 520px; height: auto; display: block; filter: drop-shadow(0 30px 40px rgba(0,0,0,.45)); animation: drift 9s var(--ease) infinite alternate; }
+.hero-art img { width: 100%; max-width: 460px; filter: drop-shadow(0 30px 40px rgba(0,0,0,.55)) drop-shadow(0 0 60px rgba(239,49,36,.35)); height: auto; display: block; filter: drop-shadow(0 30px 40px rgba(0,0,0,.45)); animation: drift 9s var(--ease) infinite alternate; }
 .hero-art::before { content: ""; position: absolute; width: 70%; height: 70%; border-radius: 50%; background: radial-gradient(circle, rgba(239,49,36,.28), rgba(106,77,255,.12) 55%, rgba(0,0,0,0) 75%); filter: blur(10px); }
 .sheet { background: var(--bg); border-radius: 40px 40px 0 0; margin-top: -40px; padding: 56px 0 72px; min-height: 60vh; }
 .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
@@ -511,3 +512,21 @@ a.tile > span:first-child { display: block; margin-bottom: 6px; } a.tile > span:
 #ctab.in > * { animation: rise .7s var(--ease) both; }
 @media (max-width: 900px) { .tiles.g4 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .client-tabs { display: flex; overflow-x: auto; scrollbar-width: none; max-width: 100%; } .client-tabs .ptab { padding: 9px 14px; font-size: 14px; white-space: nowrap; } .tiles.g4 { grid-template-columns: 1fr; } }
+
+/* ТЗ команды: кнопки карточек продуктов на одном уровне; фиолетовый — второй акцент «выгода и предложения» */
+.card.flat.pcard .btn { margin-top: auto; } .pcard > .big { margin-top: 6px; } .grid .pcard { height: 100%; }
+.btn.violet { background: var(--violet); color: #fff; border-color: var(--violet); } .btn.violet:hover { background: var(--violet-hover); box-shadow: 0 8px 20px -8px rgba(106,77,255,.6); }
+.chip.violet { background: var(--violet-soft); color: var(--violet-ink); }
+.fcard.ok { background: var(--violet); color: #fff; } .fcard.ok .ftext { color: rgba(255,255,255,.82); } .fcard.ok .fx { background: rgba(255,255,255,.14); color: #fff; }
+.fcard.ok .btn { background: #fff; color: var(--violet-ink); }
+a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--violet-soft); border-color: transparent; }
+.pcard .chip.ok { background: var(--violet-soft); color: var(--violet-ink); }
+.prod .chip.ok { background: var(--violet-soft); color: var(--violet-ink); }
+:root[data-theme="dark"] { --violet-soft: #241c4a; --violet-ink: #b9a9ff; }
+
+/* иллюстрации продуктов (fal.ai, FLUX 1.1 pro — собственные генерации команды) */
+.pimg { width: 132px; height: 132px; object-fit: contain; display: block; margin: -6px auto 6px; filter: drop-shadow(0 14px 18px rgba(0,0,0,.16)); transition: transform 0.675s var(--ease); }
+.card.flat:hover .pimg { transform: translateY(-4px) scale(1.04); }
+.prod { position: relative; padding-right: 70px !important; } .prod .pimg.sm { position: absolute; right: 10px; top: 12px; width: 56px; height: 56px; margin: 0; filter: drop-shadow(0 8px 10px rgba(0,0,0,.18)); } .prod.sel .pimg.sm { transform: scale(1.08); }
+.fcard .fico.img { background: transparent; width: 56px; height: 56px; object-fit: contain; filter: drop-shadow(0 8px 10px rgba(0,0,0,.18)); }
+@media (max-width: 600px) { .pimg { width: 96px; height: 96px; } .prod .pimg.sm { width: 48px; height: 48px; } }
