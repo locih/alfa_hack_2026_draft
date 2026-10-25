@@ -88,6 +88,7 @@ function render(view) {
   // моушн: каскадное появление при переходе между экранами (тихие перерисовки поллинга не анимируем)
   if (location.hash !== lastHash) {
     lastHash = location.hash;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     const r = root();
     r.classList.remove("enter", "leaving"); void r.offsetWidth;
     // каскад только для того, что видно без прокрутки; остальное появляется сразу, чтобы при скролле не было пустых мест
@@ -201,35 +202,33 @@ async function doLogin(login, password) {
 // ---------- клиент: главная ----------
 function turnoverChart(receipts) {
   const max = Math.max(...receipts) * 1.1, W = 600, H = 150, bw = 34, gap = (W - 12 * bw) / 11;
-  const now = new Date();
-  return h`<svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев">
+  const now = new Date(), avg = receipts.reduce((a, b) => a + b, 0) / receipts.length;
+  return h`<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Поступления на счёт за 12 месяцев">
     ${receipts.map((v, i) => {
-      const m = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1).toLocaleString("ru", { month: "short" });
-      const bh = Math.max(3, (v / max) * H), x = i * (bw + gap);
-      return h`<g><title>${m}: ${rub(v)}</title><rect class="bar ${i < 6 ? "prev" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
+      const dt = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1), m = dt.toLocaleString("ru", { month: "short" }), full = dt.toLocaleString("ru", { month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase());
+      const bh = Math.max(3, (v / max) * H), x = i * (bw + gap), prev = i ? receipts[i - 1] : null;
+      return h`<g class="bar-g" tabindex="0" data-i="${i}" data-v="${v}" data-m="${full}" data-prev="${prev ?? ""}" data-avg="${Math.round(avg)}"><rect class="bar ${i < 6 ? "prev" : ""}" x="${x}" y="${H - bh}" width="${bw}" height="${bh}" rx="5"></rect>
+        <rect class="bar-hit" x="${x - gap / 2}" y="0" width="${bw + gap}" height="${H + 22}"></rect>
         <text x="${x + bw / 2}" y="${H + 15}" text-anchor="middle">${m}</text></g>`;
-    })}</svg>`;
+    })}</svg><div class="chart-tip" hidden></div></div>`;
 }
-
-function loanBlock(l, acc) {
-  const np = l.next_payment;
-  return h`<div class="loan"><div class="keyline mb">
-      <div><span class="muted small">${T("остаток долга", "Остаток долга")}</span><div class="big num">${rub(l.outstanding)}</div><span class="muted small">из ${rub(l.amount)}</span></div>
-      <div><span class="muted small">${l.repaid ? "Статус" : "Ближайший платёж"}</span><div class="big num">${l.repaid ? "Погашен" : rub(np.amount)}</div><span class="muted small">${l.repaid ? "все платежи внесены" : "до " + dateOnly(np.date) + " · №" + np.n + " из " + l.total_count}</span></div>
-      <div><span class="muted small">Погашено</span><div class="big">${Math.round(l.progress * 100)} %</div><span class="muted small">платежей: ${l.paid_count} из ${l.total_count}</span></div></div>
-    <div class="progress" role="progressbar" aria-valuenow="${Math.round(l.progress * 100)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${Math.max(l.progress * 100, 1)}%"></span></div>
-    <div class="row wrapx between small mt"><span class="muted">Выплачено ${T("проценты", "процентов")}: ${rub(l.interest_paid)} из ${rub(l.total_interest)} · всего внесено: ${rub(l.total_paid)}</span>
-      ${l.repaid ? "" : h`<button class="btn good" data-act="pay" data-app="${l.app_id}">Оплатить платёж №${np.n} — ${rub(np.amount)}</button>`}</div>
-    <p class="hint">Платёж списывается с расчётного счёта (операция моделируется, реальных списаний нет). Остаток на счёте: <b class="num">${rub(acc.balance)}</b>.</p></div>`;
+function chartTip(e) {
+  const wrap = e.target.closest(".chart-wrap"); if (!wrap) return;
+  const tip = wrap.querySelector(".chart-tip"), g = e.target.closest(".bar-g");
+  if (!g || e.type === "mouseleave" || e.type === "focusout") { tip.hidden = true; wrap.classList.remove("hovering"); wrap.querySelectorAll(".bar-g.on").forEach((x) => x.classList.remove("on")); return; }
+  wrap.querySelectorAll(".bar-g.on").forEach((x) => x.classList.remove("on")); g.classList.add("on"); wrap.classList.add("hovering");
+  const v = +g.dataset.v, prev = g.dataset.prev === "" ? null : +g.dataset.prev, avg = +g.dataset.avg;
+  const d = prev ? Math.round((v - prev) / prev * 100) : null, da = Math.round((v - avg) / avg * 100);
+  tip.innerHTML = h`<b>${g.dataset.m}</b><div class="chart-sum">${rub(v)}</div>
+    <div class="chart-row"><span>К прошлому месяцу</span><span class="${d == null ? "" : d >= 0 ? "up" : "down"}">${d == null ? "—" : (d >= 0 ? "+" : "") + d + " %"}</span></div>
+    <div class="chart-row"><span>К среднему за год</span><span class="${da >= 0 ? "up" : "down"}">${(da >= 0 ? "+" : "") + da + " %"}</span></div>
+    <div class="chart-note">Поступления на расчётный счёт по данным банка</div>`.s;
+  tip.hidden = false;
+  const r = wrap.getBoundingClientRect(), br = g.querySelector(".bar").getBoundingClientRect();
+  let left = br.left - r.left + br.width / 2 - tip.offsetWidth / 2; left = Math.max(0, Math.min(left, r.width - tip.offsetWidth));
+  tip.style.left = left + "px"; tip.style.top = Math.max(0, br.top - r.top - tip.offsetHeight - 10) + "px";
 }
-
-function accountCard(acc) {
-  return h`<div class="card flat"><div class="row between wrapx"><div><h3>Расчётный счёт</h3><div class="muted small num">${acc.number}</div></div>
-      <div class="right"><span class="muted small">Баланс (демо)</span><div class="big num">${rub(acc.balance)}</div></div></div>
-    <div class="row wrapx mt"><input id="topup" type="number" min="1000" max="5000000" step="1000" value="100000" aria-label="Сумма пополнения, ₽" style="max-width:180px">
-      <button class="btn" data-act="topup">Пополнить счёт (демо)</button></div>
-    <p class="hint">Демо-пополнение: реальных операций нет. С этого счёта оплачиваются платежи по кредиту.</p></div>`;
-}
+document.addEventListener("mouseover", chartTip); document.addEventListener("mouseleave", chartTip, true); document.addEventListener("focusin", chartTip); document.addEventListener("focusout", chartTip);
 
 async function viewClient() {
   const [prof, apps, cat] = await Promise.all([api("/client/profile"), api("/client/applications"), api("/products")]);
