@@ -21,6 +21,7 @@ function ago(s) {
   return Math.round(m / 1440) + " дн назад";
 }
 const $ = (sel, el = document) => el.querySelector(sel);
+const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 const root = () => $("#app");
 
 let toastTimer;
@@ -159,26 +160,35 @@ async function viewLogin() {
   const users = d ? d.users : [];
   const av = (n) => n.replace(/[«»"]/g, "").split(" ").filter((w) => w.length > 1).slice(0, 2).map((w) => w[0]).join("");
   const arrow = h`<svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 5.5 20 12l-6.5 6.5-1.4-1.4 4.1-4.1H4v-2h12.2l-4.1-4.1 1.4-1.4z"/></svg>`;
-  const acc = (u) => h`<button class="acc ${u.role === "client" ? "" : "bank"}" data-act="demo-login" data-login="${u.login}">
-      <span class="av">${av(u.name)}</span><span><b>${u.name}</b><small>${u.hint}</small></span>${arrow}</button>`;
+  const acc = (u) => h`<button class="rcard ${u.role === "client" ? "" : "bank"}" data-act="demo-login" data-login="${u.login}">
+      <span class="av">${av(u.name)}</span><b>${u.name}</b><small>${u.hint}</small><span class="go">Войти ${arrow}</span></button>`;
   const clients = users.filter((u) => u.role === "client"), bank = users.filter((u) => u.role !== "client");
-  render(h`<div class="login">
-    <div class="login-hero">
-      <div class="login-mark"><i></i><span>Кредитный кабинет <small>· малый бизнес</small></span></div>
-      <h1>Кредит для бизнеса без лишних шагов</h1>
-      <p class="lead">Подбор продукта по задаче, заявка за три минуты, живой статус и понятное решение. Для банка — та же заявка, скоринг по факторам и ручной разбор в одном окне.</p>
-      <div class="tags"><span class="chip accent">Прототип · Альфа-Будущее Хакатон 2026</span><span class="chip">Данные синтетические</span><span class="chip">БКИ, ЕГРЮЛ, ФНС — моки</span></div>
-    </div>
-    <div class="roles">
-      ${d ? h`<h2>Клиенты</h2>${clients.map(acc)}<h2>Банк</h2>${bank.map(acc)}` : h`<div class="notice plate mb">Демо-режим выключен. Войдите под своей учётной записью.</div>`}
-      <details ${d ? "" : "open"}><summary>Войти по логину и паролю</summary>
+  render(h`<div class="landing">
+    <header class="hero-dark"><div class="in">
+      <div class="login-mark light"><i></i><span>Кредитный кабинет <small>· малый бизнес</small></span></div>
+      <div class="hero-grid">
+        <div class="hero-text">
+          <h1>Кредит для бизнеса без лишних шагов</h1>
+          <p class="lead">Подбор продукта по задаче, заявка за три минуты, живой статус и понятное решение. Для банка — та же заявка, скоринг по факторам и ручной разбор в одном окне.</p>
+          <div class="tags"><span class="chip dark">Прототип · Альфа-Будущее Хакатон 2026</span><span class="chip dark">Данные синтетические</span><span class="chip dark">БКИ, ЕГРЮЛ, ФНС — моки</span></div>
+          <a class="btn primary lg" href="#roles" data-act="scroll-roles">Выбрать роль и войти</a>
+        </div>
+        <div class="hero-art" aria-hidden="true"><img src="img/hero.webp" alt="" width="1200" height="900" decoding="async" onerror="this.remove()"></div>
+      </div>
+    </div></header>
+    <section class="sheet" id="roles"><div class="in">
+      <div class="sec-head"><h2>Выберите роль</h2>
+        ${d ? h`<div class="ptabs" role="tablist"><button class="ptab sel" role="tab" data-act="role-tab" data-k="client">Клиенты</button><button class="ptab" role="tab" data-act="role-tab" data-k="bank">Банк</button></div>` : ""}</div>
+      ${d ? h`<div class="role-group" data-group="client"><div class="grid g4 role-cards">${clients.map(acc)}</div></div>
+      <div class="role-group" data-group="bank" hidden><div class="grid g4 role-cards">${bank.map(acc)}</div></div>` : h`<div class="notice plate mb">Демо-режим выключен. Войдите под своей учётной записью.</div>`}
+      <details class="login-form" ${d ? "" : "open"}><summary>Войти по логину и паролю</summary>
         <form data-act="login-form" class="mt">
           <div class="field"><label for="lg">Логин</label><input id="lg" type="text" autocomplete="username"></div>
           <div class="field"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="current-password"></div>
           <button class="btn primary" type="submit">Войти</button>
           ${d ? h`<p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p>` : ""}</form></details>
       <p class="foot">Подписание и выдача имитируются, реальных операций нет. Учебный прототип команды, не сервис банка.</p>
-    </div></div>`);
+    </div></section></div>`);
 }
 async function doLogin(login, password) {
   try {
@@ -647,6 +657,8 @@ async function route(silent) {
 const act = {
   "logout": () => logout(),
   "demo-login": (el) => doLogin(el.dataset.login, "demo123"),
+  "role-tab": (el) => { $$(".ptab").forEach((b) => b.classList.toggle("sel", b === el)); $$(".role-group").forEach((g) => { g.hidden = g.dataset.group !== el.dataset.k; }); animateCounts(root()); },
+  "scroll-roles": (el, e) => { e?.preventDefault?.(); document.getElementById("roles")?.scrollIntoView({ behavior: "smooth", block: "start" }); },
   "new-app": (el) => { draft = null; location.hash = "#/client/new" + (el.dataset.product ? "?product=" + el.dataset.product : ""); },
   "to-new": () => { draft = null; location.hash = "#/client/new"; },
   "purpose": (el) => { draft.purpose = el.dataset.id; draft.product = PURPOSES.find((x) => x.id === el.dataset.id).product; if (draft.product === "overdraft") { draft.term = 12; draft.amount = 500000; draft.collateral = "none"; } paintNew(); },

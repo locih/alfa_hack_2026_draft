@@ -47,3 +47,7 @@ LLM не используются. Основной режим (`rules`) — д�
 - `@alfalab/core-components-vars` 11.4.1 — MIT, core-ds (https://github.com/core-ds/core-components). Файлы в `static/vendor/alfa-vars/`: цвета, радиусы, отступы, тени, типографика.
 - `@alfalab/icons` 3.510.0 — MIT, core-ds. SVG в `static/vendor/alfa-icons/` извлечены из React-модулей пакета скриптом `tools/alfa_icon.py` (в репозитории хакатона).
 - Фирменные шрифты Styrene UI и Alfa Interface Sans не используются (лицензионные); текст набран системным шрифтом, как в самой дизайн-системе по умолчанию.
+
+## Шрифт Onest
+
+- `Onest` — SIL Open Font License 1.1, автор Dmitri Voloshin / Onest Font Project (https://github.com/googlefonts/onest). Файлы woff2 в `static/vendor/fonts/` (кириллица и латиница, 400–700) взяты из Google Fonts и подключаются локально; интернет при работе не нужен.
