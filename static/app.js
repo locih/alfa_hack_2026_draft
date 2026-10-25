@@ -254,12 +254,12 @@ async function viewClient() {
     <p class="muted small">Предварительная оценка по вашим оборотам — не гарантия: итоговые условия назовёт банк после проверки заявки.</p>
     <div class="grid g4 mb">${prof.preapproval.map((p) => {
       const pr = prod[p.product];
-      const head = h`<div class="ptile"><span class="pic" aria-hidden="true">${PRODUCT_ICON[p.product]}</span><h3>${pr.title}</h3></div>`;
-      if (!pr.eligible) return h`<div class="card flat">${head}<p class="muted small">Программа для МСП приоритетных отраслей — для вашей компании недоступна.</p></div>`;
-      return h`<div class="card flat">${head}
+      const head = h`<span class="pic lg" aria-hidden="true">${PRODUCT_ICON[p.product]}</span><h3>${pr.title}</h3>`;
+      if (!pr.eligible) return h`<div class="card flat pcard">${head}<p class="muted small">Программа для МСП приоритетных отраслей — для вашей компании недоступна.</p></div>`;
+      return h`<div class="card flat pcard">${head}
         ${p.available ? h`<div class="big num" data-count="${p.max_amount}" data-prefix="до ">до ${rub(p.max_amount)}</div><div class="muted small">ставка от ${pct(p.rate_from)}</div>
-          <button class="btn primary sm" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Оформить</button>`
-          : h`<p class="muted small">${p.message}</p><button class="btn sm" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Подать заявку</button>`}</div>`;
+          <button class="btn primary" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Оформить</button>`
+          : h`<p class="muted small">${p.message}</p><button class="btn" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Подать заявку</button>`}</div>`;
     })}</div>
 
     <div class="cols"><div class="card"><h2>Поступления на счёт за 12 месяцев</h2>
@@ -299,30 +299,33 @@ function paintNew() {
   const rec = d.purpose ? PURPOSES.find((x) => x.id === d.purpose).product : null;
   let body = "";
   if (d.step === 1) {
-    body = h`<h2>На что нужны средства?</h2>
-      <div class="row wrapx mb">${PURPOSES.map((x) => h`<button class="pill ${d.purpose === x.id ? "sel" : ""}" data-act="purpose" data-id="${x.id}">${x.title}</button>`)}</div>
-      <div class="field"><label for="ptext">Расскажите своими словами (необязательно)</label><textarea id="ptext" data-bind="purpose_text" placeholder="Например: закупить партию муки на два месяца вперёд">${d.purpose_text}</textarea></div>
-      <h2 class="mt2">Подходящий продукт</h2>${rec ? h`<p class="muted small">По вашей цели рекомендуем «${prod[rec].title}» — отмечено ниже.</p>` : ""}
+    body = h`<h2>Рассчитаем кредит под вашу задачу</h2>
+      <div class="task-grid"><div class="task-left">
+        <div class="task-label">На что нужны средства?</div>
+        <div class="task-pills">${PURPOSES.map((x) => h`<button class="pill ${d.purpose === x.id ? "sel" : ""}" data-act="purpose" data-id="${x.id}">${x.title}</button>`)}</div>
+        <div class="field mt"><label for="ptext">Расскажите своими словами (необязательно)</label><textarea id="ptext" data-bind="purpose_text" placeholder="Например: закупить партию муки на два месяца вперёд">${d.purpose_text}</textarea></div>
+      </div><div class="task-right">
+      <h3 class="task-title">Подходящий продукт</h3>${rec ? h`<p class="muted small">По вашей цели рекомендуем «${prod[rec].title}» — отмечено ниже.</p>` : h`<p class="muted small">Выберите задачу слева — подскажем продукт.</p>`}
       <div class="grid g2">${d.cat.products.map((x) => h`<button class="prod ${d.product === x.id ? "sel" : ""}" data-act="pick-product" data-id="${x.id}" ${x.eligible ? "" : "disabled"}>
         <h3><span class="pic sm" aria-hidden="true">${PRODUCT_ICON[x.id]}</span>${x.title} ${rec === x.id ? raw('<span class="chip accent">рекомендуем</span>') : ""} ${x.id === "preferential" && x.eligible ? raw('<span class="chip ok">вам доступно</span>') : ""}</h3>
         <div class="muted small">${x.tagline}</div>
         <div class="small mt">${x.kind === "limit" ? "Лимит" : "Сумма"}: ${rub(x.min_amount)} – ${rub(x.max_amount)}${x.kind === "limit" ? "" : " · срок " + x.min_term + "–" + x.max_term + " мес."}</div>
-        ${x.eligible ? "" : h`<div class="small" style="color:var(--bad)">Недоступно для вашей компании</div>`}</button>`)}</div>
+        ${x.eligible ? "" : h`<div class="small" style="color:var(--bad)">Недоступно для вашей компании</div>`}</button>`)}</div></div></div>
       <div class="row mt2"><span class="spacer"></span><button class="btn primary" data-act="step" data-to="2" ${d.product ? "" : "disabled"}>Далее →</button></div>`;
   } else if (d.step === 2) {
     const limit = p.kind === "limit";
     body = h`<h2>${limit ? "Какой лимит нужен?" : "Сколько и на какой срок?"}</h2>
-      <div class="grid g2"><div><div class="field"><label for="amt">${limit ? "Лимит" : "Сумма"}, ₽</label><input id="amt" type="number" min="${p.min_amount}" max="${p.max_amount}" step="50000" value="${d.amount}" data-bind="amount" data-fresh="1"></div>
-        <input type="range" aria-label="Сумма" min="${p.min_amount}" max="${p.max_amount}" step="50000" value="${d.amount}" data-bind="amount" data-range="amt"></div>
-        ${limit ? h`<div class="field"><label>Срок договора</label><div class="muted" style="padding:10px 0">12 месяцев, транш до 60 дней</div></div>` :
-          h`<div><div class="field"><label for="trm">Срок, мес.</label><input id="trm" type="number" min="${p.min_term}" max="${p.max_term}" value="${d.term}" data-bind="term" data-fresh="1"></div>
-        <input type="range" aria-label="Срок" min="${p.min_term}" max="${p.max_term}" step="1" value="${d.term}" data-bind="term" data-range="trm"></div>`}</div>
+      <div class="grid g2"><div class="calc-field"><label for="amt">${limit ? "Лимит" : "Сумма"}, ₽</label><input id="amt" type="number" min="${p.min_amount}" max="${p.max_amount}" step="50000" value="${d.amount}" data-bind="amount" data-fresh="1">
+        <input type="range" aria-label="Сумма" min="${p.min_amount}" max="${p.max_amount}" step="50000" value="${d.amount}" data-bind="amount" data-range="amt"><div class="calc-scale"><span>${rub(p.min_amount)}</span><span>${rub(p.max_amount)}</span></div></div>
+        ${limit ? h`<div class="calc-field"><label>Срок договора</label><div class="calc-static">12 месяцев, транш до 60 дней</div></div>` :
+          h`<div class="calc-field"><label for="trm">Срок, мес.</label><input id="trm" type="number" min="${p.min_term}" max="${p.max_term}" value="${d.term}" data-bind="term" data-fresh="1">
+        <input type="range" aria-label="Срок" min="${p.min_term}" max="${p.max_term}" step="1" value="${d.term}" data-bind="term" data-range="trm"><div class="calc-scale"><span>${p.min_term} мес.</span><span>${p.max_term} мес.</span></div></div>`}</div>
       <div class="field mt"><label for="col">Обеспечение</label><select id="col" data-bind="collateral">${p.collateral_options.map((c) =>
         h`<option value="${c.id}" ${d.collateral === c.id ? "selected" : ""}>${c.label}</option>`)}</select>
         <div class="hint">${p.collateral_options.find((c) => c.id === d.collateral)?.hint} ${T("обеспечение", "Что такое обеспечение?")}</div></div>
       <div id="quote" class="card flat mt"><span class="muted">Считаем…</span></div>
       <div class="row mt2"><button class="btn" data-act="step" data-to="1">← Назад</button><span class="spacer"></span><button class="btn primary" data-act="step" data-to="3">Далее →</button></div>`;
-    setTimeout(refreshQuote, 0);
+    setTimeout(() => { refreshQuote(); document.querySelectorAll('input[type=range]').forEach(paintRange); }, 0);
   } else {
     const c = d.prof.company;
     body = h`<h2>Проверьте и отправьте</h2>
@@ -340,9 +343,10 @@ function paintNew() {
   }
   render(h`${raw(topbar())}<main class="wrap" style="max-width:860px"><a href="#/client" class="small">← Главная</a><h1 class="mt">Новая заявка</h1>
     <ol class="stepper mb" style="grid-template-columns:repeat(3,1fr)">${steps.map((s, i) => raw(`<li data-n="${i + 1}" class="${i + 1 < d.step ? "done" : i + 1 === d.step ? "now" : ""}">${esc(s)}</li>`))}</ol>
-    <div class="card">${body}</div></main>`);
+    <div class="card ${d.step === 1 || d.step === 2 ? "calc" : ""}">${body}</div></main>`);
 }
 
+function paintRange(r) { const k = (r.value - r.min) / (r.max - r.min) * 100; r.style.setProperty("--fill", k + "%"); }
 let quoteTimer;
 function refreshQuote() {
   clearTimeout(quoteTimer);
@@ -734,7 +738,8 @@ document.addEventListener("input", (e) => {
     const k = el.dataset.bind;
     draft[k] = el.type === "number" || el.type === "range" ? +el.value : el.value;
     if (el.dataset.range) { const n = document.getElementById(el.dataset.range); if (n) n.value = el.value; }
-    if (el.type === "number" && el.id) { const r = document.querySelector(`[data-range="${el.id}"]`); if (r) r.value = el.value; }
+    if (el.type === "number" && el.id) { const r = document.querySelector(`[data-range="${el.id}"]`); if (r) { r.value = el.value; paintRange(r); } }
+    if (el.type === "range") paintRange(el);
     if (["amount", "term", "collateral"].includes(k)) refreshQuote();
   }
 });
