@@ -605,6 +605,27 @@ function balanceChart(f, fs) {
     ${ticks.map(([dd, dt]) => h`<text x="${px(dd)}" y="${H + 16}" text-anchor="${dd === 0 ? "start" : dd === 90 ? "end" : "middle"}">${dd === 0 ? "сегодня" : dt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</text>`)}
   </svg>`;
 }
+// профицит: радар советует, а не продаёт — разместить свободные деньги, погасить досрочно, держать резерв
+function surplusAdvice(f, fs, prod) {
+  const loans = (window.__client?.prof.loans || []).filter((l) => !l.repaid && l.next_payment);
+  const free = f.free_cash, tips = [];
+  const pes = fs?.pes, risk = pes && pes !== f && pes.gap ? pes : null;
+  if (risk) tips.push({ k: "reserve", t: `Держите резерв ${rub(risk.gap.amount)}`, d: `В пессимистичном сценарии (поступления −${Math.round(fs.delta * 100)} %) разрыв возможен через ${risk.gap.day} ${plural(risk.gap.day, "день", "дня", "дней")}. Резерв на счёте или заранее подключённый овердрафт без использования закроют его бесплатно.`, href: risk.offer ? `#/client/new?product=${risk.offer.product}&amount=${risk.offer.amount}&term=${risk.offer.term}&purpose=gap` : "#/client/products", btn: risk.offer ? "Подключить овердрафт про запас" : "Подобрать защиту" });
+  if (free >= 100000) {
+    const dep = Math.floor((risk ? Math.max(0, free - risk.gap.amount) : free) * 0.8 / 10000) * 10000;
+    if (dep >= 100000) tips.push({ k: "deposit", t: `Разместите до ${rub(dep)} на 1–3 месяца`, d: `Эти деньги не понадобятся в ближайшие 90 дней даже с подушкой. Овернайт или накопительный счёт для бизнеса приносят доход и остаются доступными.`, href: "https://alfabank.ru/sme/deposits/online/", ext: true, btn: "Депозиты для бизнеса", href2: "https://alfabank.ru/sme/rko/nakoplenie/", btn2: "Накопительный счёт" });
+  }
+  for (const l of loans) {
+    const rem = l.total_count - l.paid_count, r = l.rate / 1200, P = l.next_payment.amount, extra = Math.min(l.outstanding - P, Math.floor(free * 0.5 / 10000) * 10000);
+    if (extra >= 50000 && rem > 1) {
+      const left = l.outstanding - extra, curInt = P * rem - l.outstanding, nNew = left * r < P ? Math.max(1, Math.ceil(-Math.log(1 - left * r / P) / Math.log(1 + r))) : rem, save = Math.max(0, curInt - (P * nNew - left));
+      if (save > 0) tips.push({ k: "prepay", t: `Внесите ${rub(extra)} досрочно — экономия ${rub(save)}`, d: `${l.product_title}: срок сократится с ${rem} до ${nNew} мес. при том же платеже ${rub(P)}. Расчёт предварительный, без комиссий.`, href: "#/client/loans", btn: "К калькулятору досрочного" });
+    }
+  }
+  return h`<div class="r-msg ok"><b>Ближайшие 90 дней без кассовых разрывов.</b>
+    <span>Свободно до <b class="num">${rub(free)}</b> сверх подушки ${rub(f.cushion)}. Кредит сейчас не нужен — вот что выгоднее:</span>
+    ${tips.length ? h`<div class="tips">${tips.map((x) => h`<div class="tip ${x.k}"><b>${x.t}</b><span>${x.d}</span><div class="row wrapx" style="gap:8px">${x.ext ? h`<a class="btn sm" href="${x.href}" target="_blank" rel="noopener">${x.btn} ↗</a>` : h`<a class="btn sm" href="${x.href}">${x.btn} →</a>`}${x.href2 ? h`<a class="btn sm" href="${x.href2}" target="_blank" rel="noopener">${x.btn2} ↗</a>` : ""}</div></div>`)}</div>` : h`<span class="muted small">Продолжайте в том же духе: подушка на месте, обязательные платежи покрыты.</span>`}</div>`;
+}
 const dayIndex = (today, iso) => Math.round((new Date(iso) - new Date(today)) / 864e5);
 let radarScenario = "base";
 // оптимистичный и пессимистичный сценарии = базовый ± коридор изменчивости оборотов клиента
@@ -621,9 +642,7 @@ function radarCard(fs, prod) {
       <span>${dateOnly(g.date)} остаток упадёт ниже подушки ${rub(f.cushion)}; минимум ${rub(g.lowest_balance)} ${dateOnly(g.lowest_date)}.
       ${o ? h`Закрыть дешевле всего: <b>${prod[o.product]?.title ?? o.product}</b> на ${rub(o.amount)}${o.product === "overdraft" ? " — проценты только за дни использования" : ""}, ставка от ${pct(o.rate_from)}.` : "Подходящий продукт подберём в заявке."}</span>
       ${o ? h`<a class="btn primary" href="#/client/new?product=${o.product}&amount=${o.amount}&term=${o.term}&purpose=gap">Подключить к ${dateOnly(g.date)} →</a>` : h`<a class="btn primary" href="#/client/products">Подобрать продукт →</a>`}</div>`
-    : h`<div class="r-msg ok"><b>Ближайшие 90 дней без кассовых разрывов.</b>
-      <span>Свободно до <b class="num">${rub(f.free_cash)}</b> сверх подушки ${rub(f.cushion)} — можно вкладывать в закупку или развитие без заёмных денег.</span>
-      <a class="btn" href="#/client/products">Посмотреть предложения →</a></div>`;
+    : surplusAdvice(f, fs, prod);
   return h`<div class="card radar"><div class="row between wrapx"><div><h2>Финансовый радар</h2><div class="muted small">Поступления за 12 месяцев, прогноз на 3 и остаток на счёте на 90 дней вперёд</div></div>
       <div class="row wrapx" style="gap:8px"><div class="ptabs scn" aria-label="Диапазон">${Object.entries(RADAR_RANGES).map(([k, [, t]]) => h`<button class="ptab ${k === radarRange ? "sel" : ""}" data-act="radar-range" data-k="${k}">${t}</button>`)}</div>
       <div class="ptabs scn" aria-label="Сценарий">${scn.map(([v, t]) => h`<button class="ptab ${v === radarScenario ? "sel" : ""}" data-act="radar-scn" data-v="${v}">${t}</button>`)}</div></div></div>

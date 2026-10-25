@@ -662,3 +662,8 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .feed.foryou .fcard .ftext { font-size: 13.5px; margin-bottom: 10px; } .feed.foryou .fcard .facts .btn { padding: 10px 16px; font-size: 14px; }
 .feed.foryou .fcard .fbody { display: flex; flex-direction: column; } .feed.foryou .fcard .facts { margin-top: auto; }
 @media (max-width: 600px) { .feed.foryou .fcard, .feed.foryou .ncard { width: 280px; min-height: 180px; } }
+
+.tips { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px; }
+.tip { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--radius-xs); background: rgba(255,255,255,.06); font-size: 13px; color: var(--ink); }
+.tip b { font-size: 14px; } .tip span { color: var(--muted); } .tip .btn.sm { margin-top: 2px; }
+:root[data-theme="light"] .tip, .island .tip { background: rgba(0,0,0,.05); }
