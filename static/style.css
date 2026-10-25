@@ -11,7 +11,7 @@
   --warn: #c96b00; --warn-fill: var(--color-light-status-attention, #fa9313); --warn-soft: #ffefd9;
   --bad: #d72505; --bad-fill: var(--color-light-status-negative, #ff4837); --bad-soft: #ffebeb;
   --info: #2c64d4; --info-fill: var(--color-light-status-info, #2288fa); --info-soft: #e4f0ff;
-  --radius: var(--border-radius-24, 24px); --radius-s: var(--border-radius-16, 16px); --radius-xs: var(--border-radius-12, 12px);
+  --radius: var(--border-radius-12, 12px); --radius-s: var(--border-radius-12, 12px); --radius-xs: var(--border-radius-8, 8px);
   --shadow: none; --shadow-hover: var(--shadow-xs, 0 4px 8px rgba(0,0,0,.04), 0 0 1px rgba(0,0,0,.04));
   --ease: cubic-bezier(.2,.8,.2,1);
 }
@@ -114,6 +114,38 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 details > summary { cursor: pointer; }
 @media (max-width: 900px) { .hints, .keyline { grid-template-columns: 1fr; } }
 
+
+/* главная клиента */
+.ptile { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+.ptile h3 { margin: 0; font-size: 15px; line-height: 20px; }
+.pic { flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; font-size: 18px; color: var(--ink); }
+.card.flat .big { font-size: 24px; line-height: 28px; margin-bottom: 2px; }
+.card.flat .btn { margin-top: 14px; }
+.approw { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: inherit; padding: 12px 10px; margin: 0 -10px; border-radius: var(--radius-xs); text-decoration: none; transition: background .15s var(--ease); }
+.approw:hover { background: var(--soft); text-decoration: none; }
+.approw + .approw { border-top: 1px solid var(--line); }
+.status.card { position: relative; border-left: 0; padding-left: 28px; }
+.status.card::before { content: ""; position: absolute; left: 12px; top: 20px; bottom: 20px; width: 4px; border-radius: 2px; background: var(--line); }
+.status.bank::before { background: var(--info-fill); } .status.client::before { background: var(--accent); }
+.status.none.good::before { background: var(--ok-fill); } .status.none.bad::before { background: var(--bad-fill); }
+.stat { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 12px; }
+.stat span { font-size: 13px; color: var(--muted); } .stat b { color: var(--ink); }
+@keyframes bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+#app.enter .chart .bar { transform-box: fill-box; transform-origin: bottom; animation: bar-grow .6s var(--ease) both; }
+#app.enter .chart .bar:nth-child(1) { animation-delay: 0ms }
+#app.enter .chart g:nth-of-type(1) .bar { animation-delay: 155ms; }
+#app.enter .chart g:nth-of-type(2) .bar { animation-delay: 190ms; }
+#app.enter .chart g:nth-of-type(3) .bar { animation-delay: 225ms; }
+#app.enter .chart g:nth-of-type(4) .bar { animation-delay: 260ms; }
+#app.enter .chart g:nth-of-type(5) .bar { animation-delay: 295ms; }
+#app.enter .chart g:nth-of-type(6) .bar { animation-delay: 330ms; }
+#app.enter .chart g:nth-of-type(7) .bar { animation-delay: 365ms; }
+#app.enter .chart g:nth-of-type(8) .bar { animation-delay: 400ms; }
+#app.enter .chart g:nth-of-type(9) .bar { animation-delay: 435ms; }
+#app.enter .chart g:nth-of-type(10) .bar { animation-delay: 470ms; }
+#app.enter .chart g:nth-of-type(11) .bar { animation-delay: 505ms; }
+#app.enter .chart g:nth-of-type(12) .bar { animation-delay: 540ms; }
+
 /* продукты и предложения */
 .prod { cursor: pointer; border: 2px solid var(--line); border-radius: var(--radius); padding: 16px; background: var(--card); text-align: left; width: 100%; color: inherit; }
 .prod:hover { border-color: #b9c2cc; } .prod.sel { border-color: var(--accent); background: var(--accent-soft); }
@@ -170,7 +202,7 @@ table.t tr.focus td { background: var(--warn-soft); }
 .login { max-width: 1120px; margin: 0 auto; padding: 48px 24px 64px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(340px, 520px); gap: 48px 64px; align-items: start; }
 .login-hero { position: sticky; top: 48px; }
 .login-mark { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 15px; margin-bottom: 40px; }
-.login-mark i { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); position: relative; display: inline-block; }
+.login-mark i { width: 36px; height: 36px; border-radius: 8px; background: var(--accent); position: relative; display: inline-block; }
 .login-mark i::after { content: ""; position: absolute; left: 10px; top: 12px; width: 16px; height: 16px; border: 3px solid #fff; border-width: 3px 0 0 3px; transform: rotate(45deg) scale(.8); }
 .login-mark small { font-weight: 500; color: var(--muted); }
 .login h1 { font-size: 44px; line-height: 1.08; letter-spacing: -.02em; margin: 0 0 16px; max-width: 13ch; }
@@ -186,10 +218,10 @@ table.t tr.focus td { background: var(--warn-soft); }
 @keyframes drift { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(10px, -14px) rotate(4deg); } }
 .roles h2 { font-size: 12px; line-height: 16px; letter-spacing: 1.25px; text-transform: uppercase; color: var(--faint); margin: 20px 0 10px; font-weight: 700; }
 .roles h2:first-child { margin-top: 0; }
-.acc { display: flex; gap: 16px; align-items: center; width: 100%; text-align: left; padding: 16px 18px; border: 0; background: var(--card); border-radius: var(--radius-s); margin-bottom: 8px; color: inherit; transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
+.acc { display: flex; gap: 16px; align-items: center; width: 100%; text-align: left; padding: 16px 18px; border: 0; background: var(--card); border-radius: var(--radius); margin-bottom: 8px; color: inherit; transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
 .acc:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
 .acc:active { transform: translateY(0); }
-.acc .av { flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--soft); display: grid; place-items: center; font-weight: 700; font-size: 14px; color: var(--ink); }
+.acc .av { flex: none; width: 44px; height: 44px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; font-weight: 700; font-size: 14px; color: var(--ink); }
 .acc.bank .av { background: var(--black); color: var(--card); }
 .acc b { display: block; font-size: 16px; line-height: 20px; }
 .acc small { display: block; color: var(--muted); font-size: 13px; line-height: 18px; margin-top: 2px; }

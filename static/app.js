@@ -81,6 +81,11 @@ function render(view) {
     r.querySelectorAll(".acc, .card, .tile, .prod, .roles h2").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
     r.classList.add("enter");
     clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 1200);
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) r.querySelectorAll("[data-count]").forEach((el, i) => {
+      const to = +el.dataset.count, pre = el.dataset.prefix || "", t0 = performance.now() + 120 + i * 60, dur = 650;
+      const step = (t) => { const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 3); el.textContent = pre + rub(to * e); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    });
   }
 }
 
@@ -175,20 +180,21 @@ async function viewClient() {
     <p class="muted small">Предварительная оценка по вашим оборотам — не гарантия: итоговые условия назовёт банк после проверки заявки.</p>
     <div class="grid g4 mb">${prof.preapproval.map((p) => {
       const pr = prod[p.product];
-      if (!pr.eligible) return h`<div class="card flat"><h3>${PRODUCT_ICON[p.product]} ${pr.title}</h3><p class="muted small">Программа для МСП приоритетных отраслей — для вашей компании недоступна.</p></div>`;
-      return h`<div class="card flat"><h3>${PRODUCT_ICON[p.product]} ${pr.title}</h3>
-        ${p.available ? h`<div class="big">до ${rub(p.max_amount)}</div><div class="muted small">ставка от ${pct(p.rate_from)}</div>
-          <button class="btn primary sm mt" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Оформить</button>`
-          : h`<p class="muted small">${p.message}</p><button class="btn sm mt" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Подать заявку</button>`}</div>`;
+      const head = h`<div class="ptile"><span class="pic" aria-hidden="true">${PRODUCT_ICON[p.product]}</span><h3>${pr.title}</h3></div>`;
+      if (!pr.eligible) return h`<div class="card flat">${head}<p class="muted small">Программа для МСП приоритетных отраслей — для вашей компании недоступна.</p></div>`;
+      return h`<div class="card flat">${head}
+        ${p.available ? h`<div class="big num" data-count="${p.max_amount}" data-prefix="до ">до ${rub(p.max_amount)}</div><div class="muted small">ставка от ${pct(p.rate_from)}</div>
+          <button class="btn primary sm" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Оформить</button>`
+          : h`<p class="muted small">${p.message}</p><button class="btn sm" data-act="new-app" data-product="${p.product}" ${active ? "disabled" : ""}>Подать заявку</button>`}</div>`;
     })}</div>
 
     <div class="cols"><div class="card"><h2>Поступления на счёт за 12 месяцев</h2>
       ${turnoverChart(prof.receipts)}
-      <div class="row wrapx mt small muted"><span>Среднее: <b class="num">${rub(prof.avg_receipts)}</b> / мес.</span>
+      <div class="stat"><span>Среднее: <b class="num">${rub(prof.avg_receipts)}</b> / мес.</span>
       <span>Динамика (6 мес. к предыдущим 6): <b>${prof.dynamics >= 0 ? "+" : ""}${Math.round(prof.dynamics * 100)} %</b></span>
       <span>Платежи по кредитам: <b class="num">${rub(prof.existing_payments)}</b></span></div></div>
       <div class="card"><h2>Мои заявки</h2>
-        ${apps.length ? apps.map((a) => h`<a href="#/client/app/${a.id}" class="row between" style="color:inherit;padding:10px 0;border-bottom:1px solid var(--line)">
+        ${apps.length ? apps.map((a) => h`<a href="#/client/app/${a.id}" class="approw">
           <span><b>${a.product_title}</b><br><span class="muted small">${a.id} · ${rub(a.amount)} · ${a.term} мес. · ${dateOnly(a.created)}</span></span>
           ${chip(a.status.code, a.status.title)}</a>`) : h`<p class="muted">Заявок пока нет. Выберите продукт выше — это займёт около 3 минут.</p>`}
         <button class="btn primary mt" data-act="new-app" ${active ? "disabled" : ""}>Новая заявка</button>
