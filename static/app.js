@@ -62,6 +62,15 @@ function logout(silent) {
 function stopPoll() { if (poll) { clearInterval(poll); poll = null; } }
 
 // ---------- рендер ----------
+function animateCounts(scope) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  scope.querySelectorAll("[data-count]").forEach((el, i) => {
+    const to = +el.dataset.count, pre = el.dataset.prefix || "", from = +(el.dataset.from || 0), t0 = performance.now() + 60 + i * 50, dur = 600;
+    const fmt = el.dataset.fmt === "pct" ? pct : rub;
+    const step = (t) => { const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 3); el.textContent = pre + fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+}
 let lastHash = null;
 function render(view) {
   const keep = {};
@@ -81,11 +90,7 @@ function render(view) {
     r.querySelectorAll(".acc, .card, .tile, .prod, .roles h2").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
     r.classList.add("enter");
     clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 1200);
-    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) r.querySelectorAll("[data-count]").forEach((el, i) => {
-      const to = +el.dataset.count, pre = el.dataset.prefix || "", t0 = performance.now() + 120 + i * 60, dur = 650;
-      const step = (t) => { const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 3); el.textContent = pre + rub(to * e); if (k < 1) requestAnimationFrame(step); };
-      requestAnimationFrame(step);
-    });
+    animateCounts(r);
   }
 }
 
@@ -226,7 +231,7 @@ function paintNew() {
   let body = "";
   if (d.step === 1) {
     body = h`<h2>На что нужны средства?</h2>
-      <div class="row wrapx mb">${PURPOSES.map((x) => h`<button class="chip ${d.purpose === x.id ? "accent" : ""}" style="border:1px solid var(--line);cursor:pointer;padding:8px 14px" data-act="purpose" data-id="${x.id}">${x.title}</button>`)}</div>
+      <div class="row wrapx mb">${PURPOSES.map((x) => h`<button class="pill ${d.purpose === x.id ? "sel" : ""}" data-act="purpose" data-id="${x.id}">${x.title}</button>`)}</div>
       <div class="field"><label for="ptext">Расскажите своими словами (необязательно)</label><textarea id="ptext" data-bind="purpose_text" placeholder="Например: закупить партию муки на два месяца вперёд">${d.purpose_text}</textarea></div>
       <h2 class="mt2">Подходящий продукт</h2>${rec ? h`<p class="muted small">По вашей цели рекомендуем «${prod[rec].title}» — отмечено ниже.</p>` : ""}
       <div class="grid g2">${d.cat.products.map((x) => h`<button class="prod ${d.product === x.id ? "sel" : ""}" data-act="pick-product" data-id="${x.id}" ${x.eligible ? "" : "disabled"}>
@@ -259,7 +264,7 @@ function paintNew() {
       <label class="check"><input type="checkbox" id="c_pd" data-bind-c="pd" ${d.consents.pd ? "checked" : ""}> Согласен на обработку персональных данных</label>
       <label class="check"><input type="checkbox" id="c_bureau" data-bind-c="bureau" ${d.consents.bureau ? "checked" : ""}> Согласен на запрос кредитной истории в бюро кредитных историй</label>
       <label class="check"><input type="checkbox" id="c_fns" data-bind-c="fns" ${d.consents.fns ? "checked" : ""}> Согласен на запрос сведений в ФНС и ЕГРЮЛ</label>
-      <div class="notice mt">Заявка оценивается автоматически по прозрачным правилам. Если случай нестандартный, её рассмотрит специалист банка.</div>
+      <div class="notice plate mt">Заявка оценивается автоматически по прозрачным правилам. Если случай нестандартный, её рассмотрит специалист банка.</div>
       <div class="row mt2"><button class="btn" data-act="step" data-to="2">← Назад</button><span class="spacer"></span>
         <button class="btn primary" data-act="submit-app" ${d.consents.pd && d.consents.bureau && d.consents.fns ? "" : "disabled"}>Отправить заявку</button></div>`;
   }
@@ -278,13 +283,15 @@ function refreshQuote() {
       const q = await api("/client/quote", { body: { product: draft.product, amount: draft.amount, term: p.kind === "limit" ? 12 : draft.term, collateral: draft.collateral } });
       if (!$("#quote")) return;
       const fit = q.fits ? h`<span class="chip ok">✓ укладывается в платёжеспособность</span>` : h`<span class="chip warn">! выше комфортного платежа — банк может предложить другие условия</span>`;
+      const prev = refreshQuote.prev || {}; refreshQuote.prev = q;
       $("#quote").innerHTML = h`<div class="grid g3">
         <div><div class="muted small">Ставка</div><div class="big">${pct(q.rate)}</div><div class="muted small">зависит от срока и оценки</div></div>
-        ${p.kind === "limit" ? h`<div><div class="muted small">Плата за лимит</div><div class="big">${rub(q.fee)}</div><div class="muted small">проценты за 30 дней при полном использовании ≈ ${rub(q.interest_30d)}</div></div>`
-          : h`<div><div class="muted small">Платёж в месяц</div><div class="big num">${rub(q.payment)}</div><div class="muted small">аннуитет</div></div>
-        <div><div class="muted small">Переплата</div><div class="big num">${rub(q.overpayment)}</div><div class="muted small">всего вернёте ${rub(q.total)}</div></div>`}</div>
+        ${p.kind === "limit" ? h`<div><div class="muted small">Плата за лимит</div><div class="big num" data-count="${q.fee}" data-from="${prev.fee || 0}">${rub(q.fee)}</div><div class="muted small">проценты за 30 дней при полном использовании ≈ ${rub(q.interest_30d)}</div></div>`
+          : h`<div><div class="muted small">Платёж в месяц</div><div class="big num" data-count="${q.payment}" data-from="${prev.payment || 0}">${rub(q.payment)}</div><div class="muted small">аннуитет</div></div>
+        <div><div class="muted small">Переплата</div><div class="big num" data-count="${q.overpayment}" data-from="${prev.overpayment || 0}">${rub(q.overpayment)}</div><div class="muted small">всего вернёте ${rub(q.total)}</div></div>`}</div>
       <div class="row wrapx mt">${fit}<span class="muted small">При таком сроке комфортная сумма — до ${rub(q.max_amount)}</span></div>
       <p class="hint">Предварительный расчёт, не оферта. Итоговые условия назовёт банк после проверки.</p>`.s;
+      animateCounts($("#quote"));
     } catch (e) { box.textContent = e.message; }
   }, 250);
 }
