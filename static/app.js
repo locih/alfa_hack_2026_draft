@@ -453,11 +453,22 @@ const BANK_NEWS = [
   { cat: "Обучение", href: "https://alfabank.ru/help/articles/sme/", title: "Полезные статьи для бизнеса", text: "Разборы, инструкции и кейсы для малого бизнеса", tone: "blue" },
   { cat: "Сервис", href: "https://alfabank.ru/corporate/lab-robot/", title: "Лаборатория роботизации", text: "Считаем окупаемость, подбираем технологию и финансируем внедрение", tone: "graphite" },
   { cat: "Направления", href: "https://alfabank.ru/corporate/china/", title: "Бизнес с Китаем", text: "Расчёты, закупки и сопровождение компаний, работающих с КНР", tone: "red" },
+  // полезное для предпринимателей вне банка: господдержка, реестры, торги, регуляторика
+  { cat: "Господдержка", href: "https://мойбизнес.рф", title: "Мой бизнес", text: "Центры поддержки предпринимателей в регионах: консультации, обучение, льготы", tone: "mint", ext: true },
+  { cat: "Господдержка", href: "https://мсп.рф", title: "Цифровая платформа МСП.РФ", text: "Меры поддержки, льготное кредитование, сервисы для малого бизнеса", tone: "violet", ext: true },
+  { cat: "Господдержка", href: "https://corpmsp.ru", title: "Корпорация МСП", text: "Зонтичные поручительства и гарантии по кредитам для МСП", tone: "blue", ext: true },
+  { cat: "Реестры", href: "https://rmsp.nalog.ru", title: "Единый реестр МСП", text: "Проверьте, что компания в реестре — это условие льготных программ", tone: "graphite", ext: true },
+  { cat: "Реестры", href: "https://pb.nalog.ru", title: "ФНС «Прозрачный бизнес»", text: "Проверка себя и контрагентов: задолженность, адрес, руководитель", tone: "red", ext: true },
+  { cat: "Торги", href: "https://zakupki.gov.ru", title: "Госзакупки (ЕИС)", text: "Тендеры и контракты — под них банк даёт гарантии и кредит под контракт", tone: "blue", ext: true },
+  { cat: "Регуляторика", href: "https://cbr.ru/hd_base/KeyRate/", title: "Ключевая ставка Банка России", text: "От неё считается ваша ставка по кредиту", tone: "graphite", ext: true },
+  { cat: "Регуляторика", href: "https://честныйзнак.рф", title: "Честный знак", text: "Обязательная маркировка товаров: сроки и категории", tone: "mint", ext: true },
+  { cat: "Сервисы", href: "https://www.gosuslugi.ru", title: "Госуслуги для бизнеса", text: "Лицензии, разрешения, выписки и уведомления в одном окне", tone: "violet", ext: true },
+  { cat: "Платежи", href: "https://sbp.nspk.ru/business/", title: "СБП для бизнеса", text: "Приём оплаты по QR с низкой комиссией", tone: "red", ext: true },
 ];
 function newsBlock() {
-  return h`<section class="news mb" aria-label="Новости и сервисы банка"><div class="row between wrapx"><div><h2 style="margin:0">Новости и сервисы банка</h2><span class="muted small">внешние страницы alfabank.ru · ${BANK_NEWS.length} ссылок</span></div>
+  return h`<section class="news mb" aria-label="Новости и сервисы банка"><div class="row between wrapx"><div><h2 style="margin:0">Новости и сервисы банка</h2><span class="muted small">alfabank.ru и полезные ресурсы для бизнеса · ${BANK_NEWS.length} ссылок</span></div>
       <div class="news-nav"><button class="btn sm" data-act="news-prev" aria-label="Назад">←</button><button class="btn sm" data-act="news-next" aria-label="Вперёд">→</button></div></div>
-    <div class="news-track" data-news>${BANK_NEWS.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i, 5)}"><small>${n.cat}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`)}</div></section>`;
+    <div class="news-track" data-news>${BANK_NEWS.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i, 5)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`)}</div></section>`;
 }
 
 
