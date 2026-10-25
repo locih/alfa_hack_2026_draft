@@ -97,23 +97,33 @@ function topbar(extra = "") {
 
 // ---------- вход ----------
 async function viewLogin() {
-  stopPoll();
+  document.title = "Умный кредитный кабинет";
   const d = await api("/auth/demo-users", { noAuthRedirect: true });
   const av = (n) => n.replace(/[«»"]/g, "").split(" ").filter((w) => w.length > 1).slice(0, 2).map((w) => w[0]).join("");
+  const arrow = h`<svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 5.5 20 12l-6.5 6.5-1.4-1.4 4.1-4.1H4v-2h12.2l-4.1-4.1 1.4-1.4z"/></svg>`;
+  const acc = (u) => h`<button class="acc ${u.role === "client" ? "" : "bank"}" data-act="demo-login" data-login="${u.login}">
+      <span class="av">${av(u.name)}</span><span><b>${u.name}</b><small>${u.hint}</small></span>${arrow}</button>`;
+  const clients = d.users.filter((u) => u.role === "client"), bank = d.users.filter((u) => u.role !== "client");
   render(h`<div class="login">
-    <h1>Умный кредитный кабинет</h1>
-    <p class="muted">Прототип цифрового кредитного конвейера для малого и микробизнеса: кабинет клиента и рабочее место банка в одной системе.</p>
-    <div class="notice mt mb">Демо-стенд: данные синтетические, БКИ, ЕГРЮЛ и ФНС — моки, подписание и выдача — имитация. Выберите роль для входа:</div>
-    ${d.users.map((u) => h`<button class="acc" data-act="demo-login" data-login="${u.login}">
-      <span class="av">${av(u.name)}</span><span><b>${u.name}</b><small>${u.hint}</small></span></button>`)}
-    <details class="mt"><summary class="muted small">Войти по логину и паролю</summary>
-      <form data-act="login-form" class="mt">
-        <div class="field"><label for="lg">Логин</label><input id="lg" type="text" autocomplete="username"></div>
-        <div class="field"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="current-password"></div>
-        <button class="btn primary" type="submit">Войти</button>
-        <p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p></form></details></div>`);
+    <div class="login-hero">
+      <div class="login-mark"><i></i><span>Кредитный кабинет <small>· малый бизнес</small></span></div>
+      <h1>Кредит для бизнеса без лишних шагов</h1>
+      <p class="lead">Подбор продукта по задаче, заявка за три минуты, живой статус и понятное решение. Для банка — та же заявка, скоринг по факторам и ручной разбор в одном окне.</p>
+      <div class="tags"><span class="chip accent">Прототип · Альфа-Будущее Хакатон 2026</span><span class="chip">Данные синтетические</span><span class="chip">БКИ, ЕГРЮЛ, ФНС — моки</span></div>
+      <div class="shapes" aria-hidden="true"><span class="s1"></span><span class="s2"></span><span class="s3"></span></div>
+    </div>
+    <div class="roles">
+      <h2>Клиенты</h2>${clients.map(acc)}
+      <h2>Банк</h2>${bank.map(acc)}
+      <details><summary>Войти по логину и паролю</summary>
+        <form data-act="login-form" class="mt">
+          <div class="field"><label for="lg">Логин</label><input id="lg" type="text" autocomplete="username"></div>
+          <div class="field"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="current-password"></div>
+          <button class="btn primary" type="submit">Войти</button>
+          <p class="hint">Для всех демо-учёток пароль: <code>${d.password}</code></p></form></details>
+      <p class="foot">Подписание и выдача имитируются, реальных операций нет. Учебный прототип команды, не сервис банка.</p>
+    </div></div>`);
 }
-
 async function doLogin(login, password) {
   try {
     const r = await api("/auth/login", { body: { login, password }, noAuthRedirect: true });
