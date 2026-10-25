@@ -62,6 +62,7 @@ function logout(silent) {
 function stopPoll() { if (poll) { clearInterval(poll); poll = null; } }
 
 // ---------- рендер ----------
+let lastHash = null;
 function render(view) {
   const keep = {};
   root().querySelectorAll("[id]").forEach((el) => { if ("value" in el) keep[el.id] = { v: el.value, c: el.checked, f: el === document.activeElement }; });
@@ -71,6 +72,15 @@ function render(view) {
     if (!el || el.dataset.fresh) continue;
     if (el.type === "checkbox") el.checked = st.c; else el.value = st.v;
     if (st.f) el.focus();
+  }
+  // моушн: каскадное появление при переходе между экранами (тихие перерисовки поллинга не анимируем)
+  if (location.hash !== lastHash) {
+    lastHash = location.hash;
+    const r = root();
+    r.classList.remove("enter"); void r.offsetWidth;
+    r.querySelectorAll(".acc, .card, .tile, .prod, .roles h2").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
+    r.classList.add("enter");
+    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 1200);
   }
 }
 

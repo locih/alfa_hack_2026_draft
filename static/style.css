@@ -213,4 +213,25 @@ table.t tr.focus td { background: var(--warn-soft); }
   .stepper li { font-size: 11px; } .bars .b { grid-template-columns: 120px 1fr 48px; }
   .topbar .in { flex-wrap: wrap; } .wrap { padding: 16px 14px 48px; }
 }
+
+/* моушн: быстро, коротко, одна кривая. Всё отключается при prefers-reduced-motion */
+@keyframes view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+#app.enter > .wrap, #app.enter > .login { animation: view-in .28s var(--ease) both; }
+#app.enter .acc, #app.enter .card, #app.enter .tile, #app.enter .prod, #app.enter .roles h2 { animation: rise .45s var(--ease) both; animation-delay: calc(60ms + var(--i, 0) * 45ms); }
+#app.enter .login-hero > * { animation: rise .5s var(--ease) both; }
+#app.enter .login-hero > :nth-child(2) { animation-delay: 60ms; } #app.enter .login-hero > :nth-child(3) { animation-delay: 120ms; }
+#app.enter .login-hero > :nth-child(4) { animation-delay: 180ms; } #app.enter .login-hero > :nth-child(5) { animation-delay: 260ms; }
+.btn, .acc, .prod { will-change: transform; }
+.btn:active { transform: scale(.98); }
+.btn.primary { box-shadow: 0 0 0 0 rgba(239,49,36,.0); transition: background .15s var(--ease), transform .15s var(--ease), box-shadow .3s var(--ease); }
+.btn.primary:hover { box-shadow: 0 8px 20px -8px rgba(239,49,36,.55); }
+.prod { transition: border-color .15s var(--ease), transform .15s var(--ease), box-shadow .15s var(--ease); }
+.prod:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.acc .av { transition: background .15s var(--ease), color .15s var(--ease); }
+.acc:hover .av { background: var(--accent-soft); color: var(--accent); }
+.acc.bank:hover .av { background: var(--black); color: var(--card); }
+.chip { transition: background .15s var(--ease); }
+details > summary { transition: color .15s; } details > summary:hover { color: var(--ink); }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
