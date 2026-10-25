@@ -667,3 +667,11 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .tip { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--radius-xs); background: rgba(255,255,255,.06); font-size: 13px; color: var(--ink); }
 .tip b { font-size: 14px; } .tip span { color: var(--muted); } .tip .btn.sm { margin-top: 2px; }
 :root[data-theme="light"] .tip, .island .tip { background: rgba(0,0,0,.05); }
+
+/* выбор месяца в деталях поступлений */
+.month-wrap { position: relative; display: inline-block; }
+.month-pop { position: absolute; left: 0; top: calc(100% + 8px); z-index: 5; width: 336px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px; background: var(--card); border-radius: 16px; box-shadow: 0 20px 48px -18px rgba(0,0,0,.5), 0 0 0 1px var(--line); animation: rise .35s var(--ease) both; }
+.mopt { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 10px; border: 0; border-radius: 10px; background: var(--soft); color: var(--ink); cursor: pointer; text-align: left; transition: background var(--t-fast) var(--ease); }
+.mopt:hover { background: var(--line); } .mopt.sel { background: var(--black); color: var(--on-black); } .mopt.sel small, .mopt.sel span { color: inherit; opacity: .75; }
+.mopt b { font-size: 13px; } .mopt span { font-size: 11px; color: var(--faint); } .mopt small { font-size: 11px; color: var(--muted); }
+.modal-panel { overflow: visible; } .modal-panel .ops-scroll { overflow: auto; }

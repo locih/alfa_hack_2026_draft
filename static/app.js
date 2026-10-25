@@ -281,9 +281,15 @@ function showReceipts(receipts, month = 11, range = null) {
   const el = document.createElement("div"); el.id = "modal"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Детали поступлений");
   el.innerHTML = h`<div class="modal-panel">
     <div class="modal-head"><div><h2>Поступления на счёт</h2><div class="muted small">Детализация по операциям за выбранный период · демонстрационные операции, сформированы из месячных оборотов; в банке здесь будет выписка по счёту</div></div><button class="btn sm" data-act="modal-close" aria-label="Закрыть">×</button></div>
-    <div class="period mt"><div class="ptabs scn">${presets.map(([k, t, m]) => h`<button class="ptab ${same(range, preset(m)) ? "sel" : ""}" data-act="receipts-preset" data-m="${m}">${t}</button>`)}</div>
-      <div class="period-dates"><label>с <input type="date" data-act="receipts-from" value="${isoDay(range.from)}" min="${isoDay(minD)}" max="${isoDay(range.to)}"></label><label>по <input type="date" data-act="receipts-to" value="${isoDay(range.to)}" min="${isoDay(range.from)}" max="${isoDay(maxD)}"></label></div></div>
-    <div class="month-tabs">${receipts.map((v, i) => { const dt = monthOf(i), end = new Date(dt.getFullYear(), dt.getMonth() + 1, 0); const act = end >= range.from && dt <= range.to; return h`<button class="mtab ${act ? "sel" : ""}" data-act="receipts-month" data-i="${i}" title="${monthName(dt)} · ${rub(v)}">${monthName(dt, false)}</button>`; })}</div>
+    ${(() => {
+      const monthIdx = receipts.findIndex((v, i) => { const dt = monthOf(i), end = new Date(Math.min(maxD, new Date(dt.getFullYear(), dt.getMonth() + 1, 0))); return isoDay(dt) === isoDay(range.from) && isoDay(end) === isoDay(range.to); });
+      const monthLabel = monthIdx >= 0 ? monthName(monthOf(monthIdx), false) : "Месяц";
+      return h`<div class="period mt"><div class="ptabs scn">
+        <span class="month-wrap"><button class="ptab ${monthIdx >= 0 ? "sel" : ""}" data-act="receipts-monthbtn" aria-haspopup="listbox" aria-expanded="false">${monthLabel} ▾</button>
+          <div class="month-pop" hidden role="listbox" aria-label="Выбор месяца">${receipts.map((v, i) => h`<button class="mopt ${i === monthIdx ? "sel" : ""}" data-act="receipts-month" data-i="${i}" role="option"><b>${monthName(monthOf(i), false)}</b><span>${monthOf(i).getFullYear()}</span><small>${rub(v)}</small></button>`)}</div></span>
+        ${presets.filter(([k]) => k !== "m").map(([k, t, m]) => h`<button class="ptab ${same(range, preset(m)) ? "sel" : ""}" data-act="receipts-preset" data-m="${m}">${t}</button>`)}</div>
+      <div class="period-dates"><label>с <input type="date" data-act="receipts-from" value="${isoDay(range.from)}" min="${isoDay(minD)}" max="${isoDay(range.to)}"></label><label>по <input type="date" data-act="receipts-to" value="${isoDay(range.to)}" min="${isoDay(range.from)}" max="${isoDay(maxD)}"></label></div></div>`;
+    })()}
     <div class="row between wrapx mt"><div><div class="muted small">${label} · ${days} ${plural(days, "день", "дня", "дней")}</div><div class="big num">${rub(total)}</div></div><span class="chip">${ops.length} ${plural(ops.length, "операция", "операции", "операций")}</span></div>
     <div class="scroll mt ops-scroll"><table class="t ops"><thead><tr><th>Дата</th><th>Плательщик</th><th>Назначение</th><th class="right">Сумма</th></tr></thead><tbody>
       ${ops.length ? ops.map((o) => h`<tr><td class="muted">${dateOnly(o.date)}</td><td><b>${o.payer}</b></td><td class="muted">${o.purpose}</td><td class="right num"><b>+${rub(o.amount)}</b></td></tr>`) : h`<tr><td colspan="4" class="muted">За выбранный период поступлений нет.</td></tr>`}
@@ -294,6 +300,8 @@ function showReceipts(receipts, month = 11, range = null) {
   const onKey = (e) => { if (e.key === "Escape") close(); };
   el.addEventListener("click", (e) => {
     if (e.target.closest("[data-act=modal-close]") || e.target === el) { close(); return; }
+    const mb = e.target.closest("[data-act=receipts-monthbtn]"); if (mb) { const pop = el.querySelector(".month-pop"); pop.hidden = !pop.hidden; mb.setAttribute("aria-expanded", String(!pop.hidden)); return; }
+    if (!e.target.closest(".month-wrap")) { const pop = el.querySelector(".month-pop"); if (pop && !pop.hidden) pop.hidden = true; }
     const m = e.target.closest("[data-act=receipts-month]"); if (m) { showReceipts(receipts, +m.dataset.i); return; }
     const p = e.target.closest("[data-act=receipts-preset]"); if (p) showReceipts(receipts, 11, preset(+p.dataset.m));
   });
