@@ -240,7 +240,7 @@ document.addEventListener("focusin", (e) => { const g = e.target.closest?.(".bar
 document.addEventListener("focusout", (e) => { const wrap = e.target.closest?.(".chart-wrap"); if (wrap && !(e.relatedTarget && wrap.contains(e.relatedTarget))) chartReset(wrap); });
 
 // детализация поступлений: операции генерируются на фронте детерминированно из суммы месяца (демо; в API банка их пока нет)
-const PAYERS = ["ООО «Ромашка»", "ИП Петров А. В.", "ООО «ТехноСнаб»", "АО «Логистика Плюс»", "ООО «Альфа-Трейд»", "ИП Сидорова М. К.", "ООО «СтройМастер»", "ООО «Вега Маркет»", "ИП Громов А. С.", "ООО «Северный ветер»"];
+const PAYERS = ["ООО «Ромашка»", "ИП Петров А. В.", "ООО «ТехноСнаб»", "АО «Логистика Плюс»", "ООО «Кедр-Снаб»", "ИП Сидорова М. К.", "ООО «СтройМастер»", "ООО «Вега Маркет»", "ИП Лебедева О. Н.", "ООО «Северный ветер»"];
 const PURPOSES_IN = ["Оплата по счёту", "Оплата по договору поставки", "Предоплата за услуги", "Возврат аванса", "Оплата за товар по УПД", "Эквайринг, выручка за день"];
 function receiptsOps(i, total) {
   let seed = (i + 1) * 7919 + Math.round(total / 1000); const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
@@ -256,7 +256,7 @@ function showReceipts(receipts, month = 11) {
   const ops = receiptsOps(month, receipts[month]), dt = monthOf(month);
   const el = document.createElement("div"); el.id = "modal"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Детали поступлений");
   el.innerHTML = h`<div class="modal-panel">
-    <div class="modal-head"><div><h2>Поступления на счёт</h2><div class="muted small">Детализация по операциям · демо-данные, сформированы из месячных оборотов</div></div><button class="btn sm" data-act="modal-close" aria-label="Закрыть">✕</button></div>
+    <div class="modal-head"><div><h2>Поступления на счёт</h2><div class="muted small">Детализация по операциям · демонстрационные операции, сформированы из месячных оборотов; в банке здесь будет выписка по счёту</div></div><button class="btn sm" data-act="modal-close" aria-label="Закрыть">✕</button></div>
     <div class="month-tabs">${receipts.map((v, i) => h`<button class="mtab ${i === month ? "sel" : ""}" data-act="receipts-month" data-i="${i}">${monthName(monthOf(i), false)}</button>`)}</div>
     <div class="row between wrapx mt"><div><div class="muted small">${monthName(dt)}</div><div class="big num">${rub(receipts[month])}</div></div><span class="chip">${ops.length} операций</span></div>
     <div class="scroll mt"><table class="t ops"><thead><tr><th>Дата</th><th>Плательщик</th><th>Назначение</th><th class="right">Сумма</th></tr></thead><tbody>
@@ -278,7 +278,7 @@ function loanBlock(l, acc) {
       <div><span class="muted small">Погашено</span><div class="big">${Math.round(l.progress * 100)} %</div><span class="muted small">платежей: ${l.paid_count} из ${l.total_count}</span></div></div>
     <div class="progress" role="progressbar" aria-valuenow="${Math.round(l.progress * 100)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${Math.max(l.progress * 100, 1)}%"></span></div>
     <div class="row wrapx between small mt"><span class="muted">Выплачено ${T("проценты", "процентов")}: ${rub(l.interest_paid)} из ${rub(l.total_interest)} · всего внесено: ${rub(l.total_paid)}</span>
-      ${l.repaid ? "" : h`<button class="btn good" data-act="pay" data-app="${l.app_id}">Оплатить платёж №${np.n} — ${rub(np.amount)}</button>`}</div>
+      ${l.repaid ? "" : h`<button class="btn primary" data-act="pay" data-app="${l.app_id}">Оплатить платёж №${np.n} — ${rub(np.amount)}</button>`}</div>
     <p class="hint">Платёж списывается с расчётного счёта (операция моделируется, реальных списаний нет). Остаток на счёте: <b class="num">${rub(acc.balance)}</b>.</p></div>`;
 }
 
@@ -460,7 +460,7 @@ function paintNew() {
   }
   render(h`${raw(topbar())}<main class="wrap" style="max-width:860px"><a href="#/client" class="small">← Главная</a><h1 class="mt">Новая заявка</h1>
     <ol class="stepper">${["Заявка", "Проверка", "Решение", "Подписание", "Выдача"].map((s, i) => raw(`<li data-n="${i + 1}" class="${i === 0 ? "now" : ""}">${esc(s)}</li>`))}</ol>
-    <div class="substeps mb" aria-label="Шаги заявки">${steps.map((s, i) => h`<span class="sub ${i + 1 < d.step ? "done" : i + 1 === d.step ? "now" : ""}"><i>${i + 1 < d.step ? "✓" : i + 1}</i>${s}</span>`)}</div>
+    <div class="substep mb" aria-label="Шаги заявки"><span class="chip">Шаг ${d.step} из ${steps.length}</span> <span class="muted small">${steps[d.step - 1]}</span></div>
     <div class="card ${d.step === 1 || d.step === 2 ? "calc" : ""}">${body}</div></main>`);
 }
 
@@ -498,8 +498,8 @@ function showIssued(a) {
   el.innerHTML = h`<div class="iss-glow"></div>
     <div class="iss-body">
       <svg class="iss-check" viewBox="0 0 120 120" aria-hidden="true"><circle class="iss-ring" cx="60" cy="60" r="54"/><path class="iss-tick" d="M34 62 L52 80 L88 42"/></svg>
-      <h1>Кредит выдан!</h1>
-      <p class="iss-sum">${rub(a.contract?.amount ?? a.offer?.amount ?? a.amount)} уже на вашем расчётном счёте</p>
+      <h1>${a.product === "overdraft" ? "Лимит открыт!" : "Кредит выдан!"}</h1>
+      <p class="iss-sum">${a.product === "overdraft" ? h`Овердрафт ${rub(a.contract?.amount ?? a.offer?.amount ?? a.amount)} доступен на расчётном счёте — деньги списываются по мере использования` : h`${rub(a.contract?.amount ?? a.offer?.amount ?? a.amount)} уже на вашем расчётном счёте`}</p>
       <p class="iss-sub">${a.contract?.first_payment ? h`Первый платёж ${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}` : "График платежей и договор — в карточке кредита"}</p>
       <button class="btn primary" data-act="issued-close">Смотреть график платежей</button>
     </div>`.s;
@@ -550,7 +550,7 @@ function offerCard(a) {
         h`<tr><td>Платёж в месяц</td><td class="muted">—</td><td class="num"><b>${rub(o.payment)}</b></td></tr><tr><td>${T("переплата", "Переплата")}</td><td></td><td class="num">${rub(o.overpayment)}</td></tr>`}
     </tbody></table></details>
     <p class="hint">${o.fee_text}. Предложение действует до ${dateOnly(o.valid_until)}. Ключевая ставка на момент расчёта: ${pct(o.key_rate_snapshot)}.</p>
-    ${a.status.code === "OFFER_READY" ? h`<div class="row wrapx mt"><button class="btn good" data-act="accept">Принять предложение</button>
+    ${a.status.code === "OFFER_READY" ? h`<div class="row wrapx mt"><button class="btn primary" data-act="accept">Принять предложение</button>
       <button class="btn danger" data-act="decline-offer">Отказаться</button></div>` : ""}</div>`;
 }
 
@@ -565,7 +565,7 @@ function scheduleTable(a) {
   if (!a.schedule) return "";
   const rows = a.schedule, sum = (k) => rows.reduce((t, r) => t + r[k], 0), disb = a.status.code === "DISBURSED";
   return h`<details class="mt" ${disb ? "open" : ""}><summary><b>${T("график платежей", "График платежей")}</b> <span class="muted small">· платежей: ${rows.length}${disb ? " · оплачено: " + rows.filter((r) => r.paid).length : ""}</span></summary>
-    <div class="scroll mt"><table class="t sched"><thead><tr><th>№</th><th>Дата платежа</th><th class="right">${T("основной долг", "Основной долг")}, ₽</th><th class="right">${T("проценты", "Проценты")}, ₽</th><th class="right">Всего платёж, ₽</th><th class="right">${T("остаток долга", "Остаток долга")}, ₽</th>${disb ? h`<th class="center">Оплата</th>` : ""}</tr></thead><tbody>
+    <div class="scroll mt"><table class="t sched"><thead><tr><th>№</th><th>Дата платежа</th><th class="right">${T("основной долг", "Основной долг")}</th><th class="right">${T("проценты", "Проценты")}</th><th class="right">Платёж</th><th class="right">${T("остаток долга", "Остаток долга")}</th>${disb ? h`<th class="center">Оплата</th>` : ""}</tr></thead><tbody>
     ${rows.map((r) => h`<tr class="${r.paid ? "paid" : ""}"><td>${r.n}</td><td>${dateOnly(r.date)}</td><td class="right num">${rub(r.principal)}</td><td class="right num">${rub(r.interest)}</td><td class="right num"><b>${rub(r.payment)}</b></td><td class="right num">${rub(r.balance)}</td>${disb ? h`<td class="center">${r.paid ? raw('<span class="tick" title="Оплачен">✓</span>') : ""}</td>` : ""}</tr>`)}
     </tbody><tfoot><tr><td colspan="2"><b>Итого</b></td><td class="right num"><b>${rub(sum("principal"))}</b></td><td class="right num"><b>${rub(sum("interest"))}</b></td><td class="right num"><b>${rub(sum("payment"))}</b></td><td></td>${disb ? h`<td></td>` : ""}</tr></tfoot></table></div>
     <button class="btn sm mt" data-act="csv">Скачать CSV</button></details>`;
@@ -609,9 +609,7 @@ function paintApp(a, silent = false) {
       <p class="hint">${a.contract.note}</p></div>
       ${a.loan ? h`<div class="card mt"><h2>Мой кредит</h2>${loanBlock(a.loan, a.account)}
         <div class="row wrapx mt"><input id="topup" type="number" min="1000" max="5000000" step="1000" value="100000" aria-label="Сумма пополнения, ₽" style="max-width:180px"><button class="btn" data-act="topup">Пополнить счёт (демо)</button></div></div>` : ""}
-      <div class="card mt">${scheduleTable(a)}</div>${reasonsCard(a, "Почему такое решение")}`;
-  } else if (code === "OFFER_READY" || code === "AWAITING_SIGNATURE") {
-    ctx = h`${ctx}${scheduleTable(a)}`;
+      ${reasonsCard(a, "Почему такое решение")}`;
   }
   const tl = [...a.events].reverse();
   if (!silent) setTimeout(() => animateCounts(root()), 0);
@@ -628,7 +626,8 @@ function paintApp(a, silent = false) {
         <ol class="stepper mt2">${a.steps.map((x, i) => raw(`<li data-n="${i + 1}" class="${i < s.step ? "done" : i === s.step ? "now " + (good ? "good" : bad ? "bad" : s.turn === "client" ? "wait" : "") : ""}">${esc(x)}</li>`))}</ol></div>
       ${ctx}
       ${!s.terminal && code !== "DISBURSING" ? h`<p class="mt"><button class="btn link" data-act="withdraw">Отозвать заявку</button></p>` : ""}</div>
-      <details class="card"><summary><b>История заявки</b> <span class="muted small">· последнее: ${tl[0].message}</span></summary><ul class="timeline mt">${tl.map((e, i) => h`<li class="${i === 0 ? "last" : ""}"><time>${dt(e.ts)}</time>${e.message}</li>`)}</ul></details></div></main>`);
+      <details class="card"><summary><b>История заявки</b> <span class="muted small">· последнее: ${tl[0].message}</span></summary><ul class="timeline mt">${tl.map((e, i) => h`<li class="${i === 0 ? "last" : ""}"><time>${dt(e.ts)}</time>${e.message}</li>`)}</ul></details></div></div>
+    ${a.schedule ? h`<div class="card mt">${scheduleTable(a)}</div>` : ""}</main>`);
 }
 
 // ---------- банк ----------
