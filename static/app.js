@@ -67,7 +67,7 @@ function stopPoll() { if (poll) { clearInterval(poll); poll = null; } }
 function animateCounts(scope) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   scope.querySelectorAll("[data-count]").forEach((el, i) => {
-    const to = +el.dataset.count, pre = el.dataset.prefix || "", from = +(el.dataset.from || 0), t0 = performance.now() + 60 + i * 50, dur = 600;
+    const to = +el.dataset.count, pre = el.dataset.prefix || "", from = +(el.dataset.from || 0), t0 = performance.now() + 200 + i * 70, dur = 900;
     const fmt = el.dataset.fmt === "pct" ? pct : rub;
     const step = (t) => { const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 3); el.textContent = pre + fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
     requestAnimationFrame(step);
@@ -88,10 +88,10 @@ function render(view) {
   if (location.hash !== lastHash) {
     lastHash = location.hash;
     const r = root();
-    r.classList.remove("enter"); void r.offsetWidth;
+    r.classList.remove("enter", "leaving"); void r.offsetWidth;
     r.querySelectorAll(".acc, .card, .tile, .prod, .roles h2").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
     r.classList.add("enter");
-    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 1200);
+    clearTimeout(render._t); render._t = setTimeout(() => r.classList.remove("enter"), 2000);
     animateCounts(r);
   }
 }
@@ -698,6 +698,6 @@ document.addEventListener("change", (e) => {
   if (el.dataset.bindC && draft) { draft.consents[el.dataset.bindC] = el.checked; const b = $('[data-act="submit-app"]'); if (b) b.disabled = !(draft.consents.pd && draft.consents.bureau && draft.consents.fns); }
   if (el.id === "act") syncDecisionForm();
 });
-window.addEventListener("hashchange", () => { stopPoll(); route(); });
+window.addEventListener("hashchange", () => { stopPoll(); root().classList.add("leaving"); route(); });
 route();
 })();
