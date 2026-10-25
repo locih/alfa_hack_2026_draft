@@ -149,6 +149,7 @@ function topbar(extra = "") {
   return h`<header class="topbar"><div class="in">
     <a class="brand" href="#/${bank ? "bank" : "client"}"><i></i><span>${bank ? "Рабочее место банка" : "Кредитный кабинет"} <small>· МСБ</small></span></a>
     ${raw(extra)}<span class="spacer"></span>
+    ${bank ? "" : h`<button class="bell" data-act="notif" aria-label="Уведомления" aria-haspopup="dialog">${BELL}${notifUnread() ? h`<span class="nbadge">${notifUnread()}</span>` : ""}</button>`}
     <a class="who" href="#/${bank ? "bank" : "client"}" title="${bank ? "Перейти в очередь заявок" : "Перейти в личный кабинет"}"><b>${u.name}</b><span class="muted small">${bank ? (u.role === "admin" ? "администратор стенда" : "кредитный аналитик") : "Личный кабинет"} →</span></a>
     <button class="btn sm" data-act="logout">Выйти</button></div></header>`.s;
 }
@@ -362,11 +363,24 @@ function clientSection(k, c) {
       <h2 style="margin-top:4px">${active.status.title}</h2><p class="muted" style="margin:0">${active.status.text}</p></div>
       <span class="btn primary">${active.status.turn === "client" ? "Нужно ваше действие →" : "Открыть →"}</span></div></a>` : "";
 
-  if (k === "loans") return h`${activeCard}
-    ${prof.loans.length ? h`<h2>Мои кредиты</h2><div class="grid g2 mb">${prof.loans.map((l) => h`<div class="card"><div class="row between wrapx"><div><b>${l.product_title}</b><br><span class="muted small">Договор ${l.contract} · ${pct(l.rate)}</span></div>
-          <a class="small" href="#/client/app/${l.app_id}">График и детали →</a></div><div class="mt">${loanBlock(l, prof.account)}</div></div>`)}${accountCard(prof.account)}</div>`
+  if (k === "loans") {
+    const open = prof.loans.filter((l) => !l.repaid), closed = prof.loans.filter((l) => l.repaid);
+    if (loanIdx >= open.length) loanIdx = 0;
+    const l = open[loanIdx], sched = l && c.det?.[l.app_id]?.schedule;
+    return h`${activeCard}
+    ${open.length ? h`<div class="row between wrapx mb"><h2 style="margin:0">Мои кредиты</h2>
+        ${open.length > 1 ? h`<nav class="ptabs loan-switch" aria-label="Выбор кредита">${open.map((x, i) => h`<button class="ptab ${i === loanIdx ? "sel" : ""}" data-act="loan-pick" data-i="${i}">${x.product_title} <small>${x.contract}</small></button>`)}</nav>` : ""}</div>
+      <div class="grid g2 mb"><div class="card"><div class="row between wrapx"><div><b>${l.product_title}</b><br><span class="muted small">Договор ${l.contract} · ${pct(l.rate)}${sched ? " · до " + dateOnly(sched[sched.length - 1].date) : ""}</span></div>
+          <a class="small" href="#/client/app/${l.app_id}">График и детали →</a></div>
+          ${sched ? balanceSpark(sched, l) : ""}
+          <div class="mt">${loanBlock(l, prof.account)}</div>
+          ${prepayCalc(l)}</div>${accountCard(prof.account)}</div>`
       : h`<div class="card flat empty mb"><h2>Действующих кредитов нет</h2><p class="muted">Когда кредит будет выдан, здесь появятся остаток долга, график и кнопка оплаты платежа. Подобрать продукт можно в разделе <a href="#/client/products">«Новый кредит»</a>.</p></div>`}
+    ${closed.length ? h`<h2>Закрытые кредиты</h2><div class="card mb archive">${closed.map((x) => { const sc = c.det?.[x.app_id]?.schedule; return h`<a class="approw" href="#/client/app/${x.app_id}">
+        <span><b>${x.product_title}</b><br><span class="muted small">Договор ${x.contract} · ${rub(x.amount)} · ${pct(x.rate)}${sc ? " · " + dateOnly(sc[0].date) + " – " + dateOnly(sc[sc.length - 1].date) : ""} · проценты ${rub(x.total_interest)}</span></span>
+        <span class="chip ok">Погашен</span></a>`; })}</div>` : ""}
     ${appsCard}`;
+  }
 
   if (k === "products") return h`${activeCard}
     <h2>Предодобрено по данным, которые банк уже знает</h2>
@@ -404,13 +418,69 @@ function clientSection(k, c) {
     ${apps.length && !active ? h`<div class="card flat"><div class="row between wrapx"><div><b>Последняя заявка</b><br><span class="muted small">${apps[0].product_title} · ${rub(apps[0].amount)} · ${dateOnly(apps[0].created)}</span></div>${chip(apps[0].status.code, apps[0].status.title)}</div></div>` : ""}`;
 }
 
+let loanIdx = 0;
+
+// мини-график остатка долга по графику платежей (оплаченная часть — сплошная)
+function balanceSpark(rows, l) {
+  const W = 600, H = 72, pad = 4, n = rows.length, max = l.amount;
+  const pts = [[0, l.amount], ...rows.map((r, i) => [i + 1, r.balance])];
+  const x = (i) => pad + (i / n) * (W - pad * 2), y = (v) => H - pad - (v / max) * (H - pad * 2);
+  const path = pts.map(([i, v], k) => (k ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+  const paid = l.paid_count, xp = x(paid);
+  return h`<div class="spark" aria-label="Остаток долга по месяцам"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <path d="${path} L${x(n)} ${H} L0 ${H} Z" class="sp-area"/><path d="${path}" class="sp-line"/>
+      <line x1="${xp}" y1="0" x2="${xp}" y2="${H}" class="sp-now"/><circle cx="${xp}" cy="${y(l.outstanding)}" r="4" class="sp-dot"/></svg>
+    <div class="row between small muted"><span>выдача · ${rub(l.amount)}</span><span>сейчас · ${rub(l.outstanding)}</span><span>${rows.length} платежей · ${dateOnly(rows[rows.length - 1].date)}</span></div></div>`;
+}
+
+// досрочное погашение: предварительный расчёт двух сценариев (аннуитет, без комиссий)
+const annuity = (S, r, n) => (r ? S * r / (1 - Math.pow(1 + r, -n)) : S / n);
+function prepayCalc(l) {
+  if (l.repaid || !l.next_payment) return "";
+  const rem = l.total_count - l.paid_count, r = l.rate / 1200, P = l.next_payment.amount, step = Math.max(10000, Math.round(l.outstanding / 20 / 10000) * 10000);
+  const extra = Math.min(prepayAmt[l.app_id] ?? Math.min(step * 5, l.outstanding - P), l.outstanding - P);
+  const left = l.outstanding - extra, curInt = P * rem - l.outstanding;
+  const newP = annuity(left, r, rem), savePay = curInt - (newP * rem - left);
+  const nNew = left * r < P ? Math.max(1, Math.ceil(-Math.log(1 - left * r / P) / Math.log(1 + r))) : rem, saveTerm = curInt - (P * nNew - left);
+  return h`<details class="prepay mt"><summary><b>Погасить досрочно</b> <span class="muted small">· предварительный расчёт: уменьшить платёж или сократить срок</span></summary>
+    <div class="calc-field mt"><label for="pp-${l.app_id}">Сумма досрочного взноса, ₽</label>
+      <input id="pp-${l.app_id}" type="number" min="${step}" max="${l.outstanding - P}" step="${step}" value="${extra}" data-act="prepay-amt" data-app="${l.app_id}" data-fresh="1">
+      <input type="range" min="${step}" max="${l.outstanding - P}" step="${step}" value="${extra}" data-act="prepay-amt" data-app="${l.app_id}" aria-label="Сумма досрочного взноса" data-fresh="1"></div>
+    <div class="grid g2 mt"><div class="opt"><span class="muted small">Уменьшить платёж</span><div class="big num">${rub(newP)}<small class="muted"> / мес.</small></div><div class="small">было ${rub(P)} · срок прежний, ${rem} мес.</div><div class="small ok-text">экономия на процентах ${rub(Math.max(0, savePay))}</div></div>
+      <div class="opt"><span class="muted small">Сократить срок</span><div class="big num">${nNew} мес.<small class="muted"> вместо ${rem}</small></div><div class="small">платёж прежний, ${rub(P)}</div><div class="small ok-text">экономия на процентах ${rub(Math.max(0, saveTerm))}</div></div></div>
+    <p class="hint">Расчёт по аннуитетной формуле без комиссий, не оферта. Досрочное погашение оформляется заявлением — в прототипе операция не выполняется.</p></details>`;
+}
+const prepayAmt = {};
+function repaintSection() { const box = $("#ctab"); if (!box || !window.__client) return; box.innerHTML = clientSection(clientTab, window.__client).s; animateCounts(box); }
+
+// уведомления внутри продукта: напоминание о платеже + события по заявкам (без SMS и email)
+function buildNotifs(c) {
+  const out = [];
+  for (const l of c.prof.loans) if (!l.repaid && l.next_payment) out.push({ ts: new Date().toISOString(), kind: "pay", title: `Платёж ${rub(l.next_payment.amount)} до ${dateOnly(l.next_payment.date)}`, text: `${l.product_title} · платёж №${l.next_payment.n} из ${l.total_count}`, href: "#/client/loans" });
+  for (const a of c.apps.slice(0, 6)) { const d = c.det?.[a.id]; if (!d?.events) continue;
+    for (const e of d.events.slice(-4)) out.push({ ts: e.ts, kind: a.status.terminal ? "done" : a.status.turn === "client" ? "need" : "info", title: a.product_title + " · " + a.id, text: e.message, href: "#/client/app/" + a.id }); }
+  out.sort((p, q) => (p.kind === "pay") - (q.kind === "pay") || (q.ts > p.ts ? 1 : -1));
+  return out.slice(0, 10);
+}
+const notifSeen = () => { try { return localStorage.getItem("notif-seen") || ""; } catch { return ""; } };
+const notifUnread = () => (window.__notifs || []).filter((n) => n.kind === "pay" ? !feedHidden("pay-seen") : n.ts > notifSeen()).length;
+function notifPanel() {
+  const list = window.__notifs || [];
+  return h`<div id="notif-panel" role="dialog" aria-label="Уведомления"><div class="row between"><b>Уведомления</b><button class="btn sm" data-act="notif-close" aria-label="Закрыть">×</button></div>
+    ${list.length ? list.map((n) => h`<a class="ntf ${n.kind}" href="${n.href}" data-act="notif-go"><span class="nd"></span><div><b>${n.title}</b><div class="small muted">${n.text}</div><div class="small faint">${n.kind === "pay" ? "напоминание" : dt(n.ts)}</div></div></a>`) : h`<p class="muted small">Пока тихо: уведомления о статусе заявки, одобрении и платежах появятся здесь.</p>`}
+    <p class="hint">Уведомления только внутри кабинета — без SMS и почты.</p></div>`;
+}
+
 async function viewClient(tab = "overview") {
   const [prof, apps, cat] = await Promise.all([api("/client/profile"), api("/client/applications"), api("/products")]);
   const prod = Object.fromEntries(cat.products.map((p) => [p.id, p]));
   const active = apps.find((a) => !a.status.terminal);
   const cn = prof.company;
   clientTab = CLIENT_TABS.some(([k]) => k === tab) ? tab : "overview";
-  window.__prof = prof; window.__client = { prof, apps, cat, prod, active };
+  const ids = [...new Set([...prof.loans.map((l) => l.app_id), ...apps.slice(0, 6).map((a) => a.id)])];
+  const det = Object.fromEntries((await Promise.all(ids.map((id) => api("/client/applications/" + id).then((d) => [id, d]).catch(() => [id, null])))));
+  window.__prof = prof; window.__client = { prof, apps, cat, prod, active, det };
+  window.__notifs = buildNotifs(window.__client);
   stopPoll();
   render(h`${raw(topbar())}<main class="wrap">
     <div class="card head mb"><div class="row between wrapx"><div><h1>${cn.name}</h1>
@@ -592,7 +662,11 @@ function reasonsCard(a, title) {
 function scheduleTable(a) {
   if (!a.schedule) return "";
   const rows = a.schedule, sum = (k) => rows.reduce((t, r) => t + r[k], 0), disb = a.status.code === "DISBURSED";
-  return h`<details class="mt" ${disb ? "open" : ""}><summary><b>${T("график платежей", "График платежей")}</b> <span class="muted small">· платежей: ${rows.length}${disb ? " · оплачено: " + rows.filter((r) => r.paid).length : ""}</span></summary>
+  const mx = Math.max(...rows.map((r) => r.payment)), over = sum("interest"), princ = sum("principal");
+  const viz = h`<div class="sched-viz mt"><div class="row between wrapx small"><span><i class="sw p"></i>основной долг ${rub(princ)}</span><span><i class="sw i"></i>проценты ${rub(over)} · переплата ${Math.round(over / princ * 100)} %</span><span class="muted">всего ${rub(princ + over)}</span></div>
+    <div class="sv-bars" role="img" aria-label="Структура каждого платежа: основной долг и проценты">${rows.map((r) => h`<div class="sv-col ${r.paid ? "paid" : ""}" title="№${r.n} · ${dateOnly(r.date)} · долг ${rub(r.principal)} · проценты ${rub(r.interest)}"><span class="i" style="height:${(r.interest / mx * 100).toFixed(1)}%"></span><span class="p" style="height:${(r.principal / mx * 100).toFixed(1)}%"></span></div>`)}</div>
+    <div class="row between small muted"><span>${dateOnly(rows[0].date)}</span><span>доля процентов в платеже падает с ${Math.round(rows[0].interest / rows[0].payment * 100)} % до ${Math.round(rows[rows.length - 1].interest / rows[rows.length - 1].payment * 100)} %</span><span>${dateOnly(rows[rows.length - 1].date)}</span></div></div>`;
+  return h`<details class="mt" ${disb ? "open" : ""}><summary><b>${T("график платежей", "График платежей")}</b> <span class="muted small">· платежей: ${rows.length}${disb ? " · оплачено: " + rows.filter((r) => r.paid).length : ""}</span></summary>${viz}
     <div class="scroll mt"><table class="t sched"><thead><tr><th>№</th><th>Дата платежа</th><th class="right">${T("основной долг", "Основной долг")}</th><th class="right">${T("проценты", "Проценты")}</th><th class="right">Платёж</th><th class="right">${T("остаток долга", "Остаток долга")}</th>${disb ? h`<th class="center">Оплата</th>` : ""}</tr></thead><tbody>
     ${rows.map((r) => h`<tr class="${r.paid ? "paid" : ""}"><td>${r.n}</td><td>${dateOnly(r.date)}</td><td class="right num">${rub(r.principal)}</td><td class="right num">${rub(r.interest)}</td><td class="right num"><b>${rub(r.payment)}</b></td><td class="right num">${rub(r.balance)}</td>${disb ? h`<td class="center">${r.paid ? raw('<span class="tick" title="Оплачен">✓</span>') : ""}</td>` : ""}</tr>`)}
     </tbody><tfoot><tr><td colspan="2"><b>Итого</b></td><td class="right num"><b>${rub(sum("principal"))}</b></td><td class="right num"><b>${rub(sum("interest"))}</b></td><td class="right num"><b>${rub(sum("payment"))}</b></td><td></td>${disb ? h`<td></td>` : ""}</tr></tfoot></table></div>
@@ -812,6 +886,11 @@ const act = {
   "logout": () => logout(),
   "demo-login": (el) => doLogin(el.dataset.login, "demo123"),
   "receipts-details": () => { if (window.__prof) showReceipts(window.__prof.receipts, receiptsMonth); },
+  "loan-pick": (el) => { loanIdx = +el.dataset.i; repaintSection(); },
+  "prepay-amt": () => {},
+  "notif": () => { const p = $("#notif-panel"); if (p) return p.remove(); document.body.insertAdjacentHTML("beforeend", notifPanel().s); try { localStorage.setItem("notif-seen", new Date().toISOString()); } catch { /* приватный режим */ } $(".bell .nbadge")?.remove(); },
+  "notif-close": () => $("#notif-panel")?.remove(),
+  "notif-go": (el) => { $("#notif-panel")?.remove(); location.hash = el.getAttribute("href"); },
   "client-tab": (el, ev) => {
     if (!window.__client || !el.dataset.k || el.dataset.k === clientTab) { ev?.preventDefault?.(); return; }
     ev?.preventDefault?.(); clientTab = el.dataset.k;
@@ -898,6 +977,7 @@ document.addEventListener("submit", (e) => {
 });
 document.addEventListener("input", (e) => {
   const el = e.target;
+  if (el.dataset.act === "prepay-amt") { prepayAmt[el.dataset.app] = +el.value; const box = el.closest(".card"); if (box) { const d = box.querySelector(".prepay"); const open = d?.open; const l = (window.__client?.prof.loans || []).find((x) => x.app_id === el.dataset.app); if (l && d) { d.outerHTML = prepayCalc(l).s; const nd = box.querySelector(".prepay"); if (nd) { nd.open = open; const f = nd.querySelector(el.type === "range" ? "input[type=range]" : "input[type=number]"); f?.focus(); } } } return; }
   if (el.dataset.bind && draft) {
     const k = el.dataset.bind;
     draft[k] = el.type === "number" || el.type === "range" ? +el.value : el.value;
