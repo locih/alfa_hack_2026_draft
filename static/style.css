@@ -186,8 +186,9 @@ details > summary { cursor: pointer; }
 .prod h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 #quote { background: var(--soft); border-radius: var(--radius); padding: 20px; }
 #quote .big { font-size: 26px; }
-.notice, .plate { border: 1px solid rgba(34,136,250,.25); border-radius: var(--radius); display: flex; gap: 12px; align-items: flex-start; }
-.notice::before, .plate::before { content: "i"; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--info-fill); color: #fff; font-weight: 700; font-size: 12px; display: grid; place-items: center; margin-top: 1px; }
+.notice, .plate { border: 1px solid rgba(34,136,250,.25); border-radius: var(--radius); display: block; position: relative; padding-left: 44px !important; line-height: 1.5; }
+.notice::before, .plate::before { content: "i"; position: absolute; left: 14px; top: 12px; width: 20px; height: 20px; border-radius: 50%; background: var(--info-fill); color: #fff; font-weight: 700; font-size: 12px; display: grid; place-items: center; }
+.notice > *, .plate > * { display: inline; } .notice .term, .plate .term { display: inline; }
 .notice.warn { border-color: rgba(250,147,19,.35); } .notice.warn::before { background: var(--warn-fill); content: "!"; }
 .notice.ok { border-color: rgba(12,196,77,.35); } .notice.ok::before { background: var(--ok-fill); content: "✓"; }
 .notice.bad { border-color: rgba(255,72,55,.35); } .notice.bad::before { background: var(--bad-fill); content: "!"; }
