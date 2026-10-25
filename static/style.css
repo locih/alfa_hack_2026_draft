@@ -36,7 +36,7 @@
 :root[data-theme="dark"] .chart-wrap.hovering .bar-g.on text { fill: #fff; }
 :root[data-theme="dark"] .pimg { filter: drop-shadow(0 14px 18px rgba(0,0,0,.5)); }
 :root[data-theme="dark"] .tile { border-color: transparent; }
-:root[data-theme="dark"] .task-left .pill { background: var(--soft); }
+:root[data-theme="dark"] .task-left .pill:not(.sel) { background: var(--soft); }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Onest", var(--font-family-system, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif); -webkit-font-smoothing: antialiased; }
