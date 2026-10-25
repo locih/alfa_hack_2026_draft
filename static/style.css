@@ -675,3 +675,7 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .mopt:hover { background: var(--line); } .mopt.sel { background: var(--black); color: var(--on-black); } .mopt.sel small, .mopt.sel span { color: inherit; opacity: .75; }
 .mopt b { font-size: 13px; } .mopt span { font-size: 11px; color: var(--faint); } .mopt small { font-size: 11px; color: var(--muted); }
 .modal-panel { overflow: visible; } .modal-panel .ops-scroll { overflow: auto; }
+/* выбранный вариант — красная обводка, чтобы читался и на тёмном, и на белом */
+.pill.sel, .task-left .pill.sel { box-shadow: 0 0 0 2px var(--accent); }
+.ptabs.scn .ptab.sel, .month-wrap .ptab.sel, .loan-switch .ptab.sel { box-shadow: 0 0 0 2px var(--accent); }
+.mopt.sel { box-shadow: 0 0 0 2px var(--accent); }
