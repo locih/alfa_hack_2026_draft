@@ -11,16 +11,16 @@ export function mount(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+  renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.NoToneMapping;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.55;
+  const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.45;
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
   camera.position.set(4.9, 4.4, 6.4); camera.lookAt(0.1, 0.3, 0.1);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xd9dde6, 0.7));
-  const key = new THREE.DirectionalLight(0xffffff, 3.0); key.position.set(4, 7, 5); key.castShadow = true;
+  const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(4, 7, 5); key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 6; key.shadow.bias = -0.0005;
   Object.assign(key.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 25 }); scene.add(key);
   const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-6, 3, 2); scene.add(fill);
