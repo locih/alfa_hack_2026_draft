@@ -23,7 +23,7 @@ def _receipts(mean: float, growth: float, noise_cv: float) -> list[int]:
 
 CLIENTS = {
     "C-A": {
-        "id": "C-A", "name": "ООО «Север-Тех»", "legal_form": "ООО", "inn": "0012345601", "ogrn": "1000000000011",
+        "id": "C-A", "start_balance": 1500000, "name": "ООО «Север-Тех»", "legal_form": "ООО", "inn": "0012345601", "ogrn": "1000000000011",
         "okved": "62.01 Разработка программного обеспечения", "industry": "it",
         "director": "Орлов Игорь Сергеевич", "address": "г. Северодвинск, ул. Синтетическая, 1",
         "registered": "2022-06-14", "age_months": 52, "tenure_months": 30,
@@ -36,7 +36,7 @@ CLIENTS = {
         "msp_registry": True, "priority_industry": True,
     },
     "C-B": {
-        "id": "C-B", "name": "ООО «Лесной хлеб»", "legal_form": "ООО", "inn": "0012345602", "ogrn": "1000000000022",
+        "id": "C-B", "start_balance": 500000, "name": "ООО «Лесной хлеб»", "legal_form": "ООО", "inn": "0012345602", "ogrn": "1000000000022",
         "okved": "10.71 Производство хлеба и мучных кондитерских изделий", "industry": "production",
         "director": "Лесникова Марина Петровна", "address": "г. Вологда, ул. Демонстрационная, 7",
         "registered": "2025-02-03", "age_months": 20, "tenure_months": 10,
@@ -49,7 +49,7 @@ CLIENTS = {
         "msp_registry": True, "priority_industry": True,
     },
     "C-C": {
-        "id": "C-C", "name": "ИП Громов А. С.", "legal_form": "ИП", "inn": "001234560003", "ogrn": "300000000000033",
+        "id": "C-C", "start_balance": 80000, "name": "ИП Громов А. С.", "legal_form": "ИП", "inn": "001234560003", "ogrn": "300000000000033",
         "okved": "56.10 Рестораны и услуги по доставке продуктов питания", "industry": "catering",
         "director": "Громов Алексей Сергеевич", "address": "г. Тверь, ул. Тестовая, 12",
         "registered": "2025-11-20", "age_months": 11, "tenure_months": 3,
@@ -63,7 +63,7 @@ CLIENTS = {
         "msp_registry": True, "priority_industry": False,
     },
     "C-D": {
-        "id": "C-D", "name": "ООО «СтройРесурс»", "legal_form": "ООО", "inn": "0012345604", "ogrn": "1000000000044",
+        "id": "C-D", "start_balance": 200000, "name": "ООО «СтройРесурс»", "legal_form": "ООО", "inn": "0012345604", "ogrn": "1000000000044",
         "okved": "41.20 Строительство жилых и нежилых зданий", "industry": "construction",
         "director": "Строев Виктор Андреевич", "address": "г. Калуга, ул. Образцовая, 20",
         "registered": "2023-04-10", "age_months": 36, "tenure_months": 24,

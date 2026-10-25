@@ -8,12 +8,13 @@ K = 14.0
 PD = {"A": 1.5, "B": 3.0, "C": 6.0, "D": 11.0, "E": 20.0}
 CAP = {"A": .5, "B": .8, "C": 1.2, "D": 1.8, "E": 3.0}
 LGD = {"none": 45, "guarantor": 40, "equipment": 35, "realty": 25}
+DISC = {"none": 0.0, "guarantor": 0.5, "equipment": 1.0, "realty": 2.0}   # явная скидка за обеспечение, п.п.
 PADD = {"working": 0, "overdraft": 1.0, "development": .5}
 
 def ref_rate(prod, g, term, col, manual, k=K):
     if prod == "preferential": return round(k + 3, 2)
     tadd = 0 if term <= 12 else .5 if term <= 36 else 1.0
-    raw = k + (1.8 if manual else 1.2) + PD[g] * LGD[col] / 100 + CAP[g] + 1.0 + PADD[prod] + tadd
+    raw = k + (1.8 if manual else 1.2) + PD[g] * LGD[col] / 100 + CAP[g] + 1.0 + PADD[prod] + tadd - DISC[col]
     r = math.ceil(round(raw * 2, 9)) / 2
     return min(r, k + 10)
 

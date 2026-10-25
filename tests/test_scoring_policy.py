@@ -45,10 +45,12 @@ def test_price_cap_and_key_rate_parametrisation():
     assert pricing.rate_for("development", "C", 24, "equipment", False, 14.0) < pricing.rate_for("development", "C", 24, "none", False, 14.0)
 
 
-def test_collateral_opens_access_not_cheap_credit():
-    none = pricing.rate_for("working", "B", 24, "none", False, 14.0)
-    realty = pricing.rate_for("working", "B", 24, "realty", False, 14.0)
-    assert 0 <= none - realty <= 2.5
+def test_collateral_lowers_rate_visibly_and_monotonically():
+    r = {c: pricing.rate_for("working", g, 24, c, False, 14.0) for g in "ABC" for c in ("none", "guarantor", "equipment", "realty")}
+    for g in "ABC":
+        none, gu, eq, re_ = (pricing.rate_for("working", g, 24, c, False, 14.0) for c in ("none", "guarantor", "equipment", "realty"))
+        assert none > gu >= eq >= re_ and none - re_ >= 2.0, (g, none, gu, eq, re_)      # без обеспечения ставка выше
+        assert none - re_ <= 4.0                                                          # но не «минус 5–8 пунктов»
 
 
 def test_annuity_schedule_closes_to_zero_and_sums():

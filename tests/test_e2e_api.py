@@ -172,3 +172,74 @@ def test_static_assets_are_revalidated_not_cached(api):
     for path in ("/", "/app.js", "/style.css"):
         r = api.get(path)
         assert r.status_code == 200 and r.headers["cache-control"] == "no-cache" and r.headers.get("etag")
+
+
+def test_collateral_options_are_named_by_legal_form(api):
+    ooo = {o["id"]: o["label"] for o in api.get("/api/products", headers=login(api, "sever")).json()["products"][0]["collateral_options"]}
+    ip = {o["id"]: o["label"] for o in api.get("/api/products", headers=login(api, "gromov")).json()["products"][0]["collateral_options"]}
+    assert ooo["guarantor"] == "Поручительство собственников бизнеса" and ip["guarantor"] == "Поручительство третьего лица"
+    assert ooo["none"] == "Без обеспечения" and "владельц" not in str(ooo) + str(ip)
+
+
+def test_quote_shows_how_much_collateral_lowers_the_rate(api):
+    h = login(api, "sever")
+    base = {"product": "working", "amount": 1_000_000, "term": 24}
+    none = api.post("/api/client/quote", headers=h, json=base).json()
+    realty = api.post("/api/client/quote", headers=h, json=base | {"collateral": "realty"}).json()
+    assert none["collateral_effect"] == 0 and realty["collateral_effect"] >= 2.0
+    assert none["rate"] - realty["rate"] == realty["collateral_effect"] and realty["payment"] < none["payment"]
+
+
+def _disburse(api, user="sever", amount=3_000_000, term=24):
+    h = login(api, user)
+    app_id = submit(api, h, amount=amount, term=term)
+    api.post(f"/api/client/applications/{app_id}/accept", headers=h)
+    code = get(api, h, app_id)["sign_code"]
+    assert api.post(f"/api/client/applications/{app_id}/sign", headers=h, json={"code": code}).status_code == 200
+    return h, app_id
+
+
+def test_post_credit_loan_summary_and_payment_reduces_debt(api):
+    h, app_id = _disburse(api)
+    start = api.get("/api/client/account", headers=h).json()["balance"]
+    assert start == 1_500_000 + 3_000_000                                      # стартовый остаток + зачисление кредита
+    a = get(api, h, app_id)
+    assert a["loan"]["outstanding"] == 3_000_000 and a["loan"]["paid_count"] == 0 and a["loan"]["next_payment"]["n"] == 1
+    r = api.post(f"/api/client/applications/{app_id}/pay", headers=h)
+    assert r.status_code == 200
+    a = get(api, h, app_id)
+    row1 = a["schedule"][0]
+    assert row1["paid"] and not a["schedule"][1]["paid"]
+    assert a["loan"]["outstanding"] == row1["balance"] < 3_000_000 and a["loan"]["paid_count"] == 1
+    assert a["loan"]["interest_paid"] == row1["interest"] and a["loan"]["total_paid"] == row1["payment"]
+    assert api.get("/api/client/account", headers=h).json()["balance"] == start - row1["payment"]
+    assert a["status"]["code"] == "DISBURSED" and any("Платёж №1" in e["message"] for e in a["events"])   # статус заявки не меняется
+
+
+def test_repay_whole_loan_and_insufficient_funds_flow(api):
+    h, app_id = _disburse(api, "lesnoy")                                       # 0,5 + 3 млн ₽ на счёте, платежей на 3,63 млн ₽
+    paid = 0
+    while True:
+        r = api.post(f"/api/client/applications/{app_id}/pay", headers=h)
+        if r.status_code != 200:
+            break
+        paid += 1
+    assert r.status_code == 422 and "Пополните счёт" in r.json()["detail"] and 0 < paid < 24
+    assert api.post("/api/client/account/topup", headers=h, json={"amount": 500}).status_code == 422     # меньше минимума
+    assert api.post("/api/client/account/topup", headers=h, json={"amount": 500_000}).status_code == 200
+    while api.post(f"/api/client/applications/{app_id}/pay", headers=h).status_code == 200:
+        pass
+    a = get(api, h, app_id)
+    assert a["loan"]["repaid"] and a["loan"]["outstanding"] == 0 and a["status"]["title"] == "Кредит погашен"
+    assert all(r["paid"] for r in a["schedule"]) and a["schedule"][-1]["balance"] == 0
+    assert api.post(f"/api/client/applications/{app_id}/pay", headers=h).status_code == 409
+
+
+def test_schedule_dates_are_stable_after_disbursement_and_pay_is_private(api):
+    h, app_id = _disburse(api)
+    d1 = [r["date"] for r in get(api, h, app_id)["schedule"]]
+    assert d1 == [r["date"] for r in get(api, h, app_id)["schedule"]]
+    h2 = login(api, "lesnoy")
+    assert api.post(f"/api/client/applications/{app_id}/pay", headers=h2).status_code == 404       # чужой кредит
+    assert api.post(f"/api/client/applications/{app_id}/pay", headers=login(api, "analyst")).status_code == 403
+    assert api.get("/api/client/account", headers=login(api, "analyst")).status_code == 403

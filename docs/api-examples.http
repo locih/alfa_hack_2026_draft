@@ -86,5 +86,20 @@ Content-Type: application/json
 
 {"key_rate": 14.0, "bureau_mode": "ok", "step_delay": 1.2}
 
+### 13. Мой кредит (демо): счёт, пополнение, оплата ближайшего платежа
+GET {{host}}/api/client/account
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/client/account/topup
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"amount": 100000}
+
+###
+POST {{host}}/api/client/applications/{{appId}}/pay
+Authorization: Bearer {{token}}
+
 ### Служебные
 GET {{host}}/api/health/ready

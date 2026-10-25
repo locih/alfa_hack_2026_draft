@@ -149,7 +149,10 @@ def step_disburse(app_id: str) -> None:
             first = {"date": (date.today() + timedelta(days=30)).isoformat(), "amount": o["payment"]}
         contract = {"number": number, "date": date.today().isoformat(), "account": client["account"],
                     "amount": o["amount"], "rate": o["rate"], "term": o["term"], "first_payment": first,
+                    "schedule_start": date.today().isoformat(), "payments": [], "repaid": False,
                     "note": "Моделируемая выдача: реальных денежных операций нет"}
+        _balance(c, app["client_id"])
+        c.execute("UPDATE accounts SET balance=balance+? WHERE client_id=?", (o["amount"], app["client_id"]))
         move(c, app, "DISBURSED", "system", f"Кредит выдан. Договор {number}", "client",
              bank_message=f"Зачисление {o['amount']:,} ₽ на счёт {client['account']} (мок)".replace(",", " "), contract=contract)
 
@@ -314,15 +317,115 @@ def _status_view(app: dict) -> dict:
     if app["status"] == "AWAITING_DOCS" and app.get("doc_request"):
         text = f"{app['doc_request']['text']}. Закройте пункты в списке «Что нужно от вас»."
     nxt, need, eta = CLIENT_HINTS[app["status"]]
+    if app["status"] == "DISBURSED" and (app.get("contract") or {}).get("repaid"):
+        title, text, nxt, need = "Кредит погашен", "Все платежи по графику внесены. Спасибо!", "При необходимости оформите новый кредит", "—"
     return {"code": app["status"], "title": title, "text": text, "step": step, "turn": turn, "next": nxt, "need": need, "eta": eta,
             "transient": app["status"] in TRANSIENT, "terminal": app["status"] in TERMINAL}
 
 
 def _schedule(app: dict) -> list[dict] | None:
-    o = app.get("offer")
-    if o and o.get("payment") and app["status"] in ("OFFER_READY", "AWAITING_SIGNATURE", "DISBURSING", "DISBURSED"):
-        return pricing.schedule(o["amount"], o["rate"], o["term"])
-    return None
+    o, ct = app.get("offer"), app.get("contract")
+    if not (o and o.get("payment") and app["status"] in ("OFFER_READY", "AWAITING_SIGNATURE", "DISBURSING", "DISBURSED")):
+        return None
+    start = date.fromisoformat(ct["schedule_start"]) if ct and ct.get("schedule_start") else None   # после выдачи даты не «плывут»
+    rows = pricing.schedule(o["amount"], o["rate"], o["term"], start)
+    paid = {p["n"]: p for p in (ct or {}).get("payments", [])}
+    for r in rows:
+        r["paid"] = r["n"] in paid
+        r["paid_at"] = paid[r["n"]]["paid_at"] if r["n"] in paid else None
+    return rows
+
+
+def _rub(n: float) -> str:
+    return f"{round(n):,}".replace(",", " ") + " ₽"
+
+
+def loan_summary(app: dict) -> dict | None:
+    """Состояние выданного кредита: остаток долга, прогресс, ближайший платёж (посткредитный модуль — необязательный)."""
+    rows = _schedule(app)
+    if not rows or app["status"] != "DISBURSED":
+        return None
+    paid = [r for r in rows if r["paid"]]
+    nxt = next((r for r in rows if not r["paid"]), None)
+    amount = app["offer"]["amount"]
+    outstanding = paid[-1]["balance"] if paid else amount
+    return {"app_id": app["id"], "contract": app["contract"]["number"], "product_title": app["offer"]["product_title"], "amount": amount,
+            "rate": app["offer"]["rate"], "outstanding": outstanding, "progress": round(1 - outstanding / amount, 4),
+            "paid_count": len(paid), "total_count": len(rows), "total_paid": sum(r["payment"] for r in paid),
+            "interest_paid": sum(r["interest"] for r in paid), "total_interest": sum(r["interest"] for r in rows),
+            "next_payment": {"n": nxt["n"], "date": nxt["date"], "amount": nxt["payment"]} if nxt else None, "repaid": nxt is None}
+
+
+# ---------- расчётный счёт (демо) и платежи ----------
+
+def _balance(c, client_id: str) -> int:
+    r = c.execute("SELECT balance FROM accounts WHERE client_id=?", (client_id,)).fetchone()
+    if r is None:
+        bal = mocks.get_client(client_id)["start_balance"]
+        c.execute("INSERT INTO accounts(client_id, balance) VALUES(?,?)", (client_id, bal))
+        return bal
+    return r["balance"]
+
+
+def account_view(client_id: str) -> dict:
+    with db.tx() as c:
+        return {"number": mocks.get_client(client_id)["account"], "balance": _balance(c, client_id)}
+
+
+def account_topup(user: dict, amount: int) -> dict:
+    """Демо-пополнение расчётного счёта (реальных операций нет)."""
+    with db.tx() as c:
+        _balance(c, user["client_id"])
+        c.execute("UPDATE accounts SET balance=balance+? WHERE client_id=?", (amount, user["client_id"]))
+    return account_view(user["client_id"])
+
+
+def pay_next(user: dict, app_id: str) -> dict:
+    """Оплата ближайшего платежа по графику со счёта клиента (моделируется). Статус заявки не меняется."""
+    with db.tx() as c:
+        app = _own(c, user, app_id)
+        rows = _schedule(app)
+        if app["status"] != "DISBURSED" or not rows:
+            raise ServiceError(409, "По этой заявке нет графика платежей")
+        nxt = next((r for r in rows if not r["paid"]), None)
+        if nxt is None:
+            raise ServiceError(409, "Кредит уже погашен")
+        bal = _balance(c, user["client_id"])
+        if bal < nxt["payment"]:
+            raise ServiceError(422, f"Недостаточно средств на счёте: нужно {_rub(nxt['payment'])}, доступно {_rub(bal)}. Пополните счёт.")
+        c.execute("UPDATE accounts SET balance=balance-? WHERE client_id=?", (nxt["payment"], user["client_id"]))
+        ct = app["contract"]
+        ct["payments"].append({"n": nxt["n"], "paid_at": db.now(), "amount": nxt["payment"]})
+        ct["repaid"] = nxt["n"] == len(rows)
+        cur = c.execute("UPDATE applications SET contract=?, updated=?, version=version+1 WHERE id=? AND version=?",
+                        (db.dumps(ct), db.now(), app_id, app["version"]))
+        if cur.rowcount != 1:
+            raise ServiceError(409, "Заявка изменилась, обновите страницу")
+        log(c, app_id, user["login"], "payment", f"Платёж №{nxt['n']} на {_rub(nxt['payment'])} оплачен со счёта", "both")
+        if ct["repaid"]:
+            log(c, app_id, "system", "repaid", "Кредит полностью погашен", "both")
+        app["contract"], app["version"] = ct, app["version"] + 1
+        return {"loan": loan_summary(app), "balance": _balance(c, user["client_id"])}
+
+
+COLLATERAL_LABELS = {"none": "Без обеспечения", "equipment": "Залог приобретаемого оборудования или транспорта", "realty": "Залог недвижимости"}
+COLLATERAL_HINTS = {
+    "none": "Кредит без залога и поручителей; ставка выше, чем при наличии обеспечения.",
+    "guarantor": "Поручитель отвечает по кредиту вместе с компанией. Это снижает риск банка и ставку.",
+    "equipment": "Приобретаемое оборудование или транспорт остаётся в залоге у банка до погашения. Снижает ставку.",
+    "realty": "Недвижимость остаётся в залоге у банка до погашения. Сильнее всего снижает ставку.",
+}
+
+
+def collateral_options(client_id: str | None, allowed: list[str]) -> list[dict]:
+    """Названия обеспечения зависят от формы бизнеса: у ИП нет «собственников», поэтому — поручительство третьего лица."""
+    legal = mocks.get_client(client_id)["legal_form"] if client_id else "ООО"
+    labels = dict(COLLATERAL_LABELS, guarantor="Поручительство собственников бизнеса" if legal == "ООО" else "Поручительство третьего лица")
+    return [{"id": c, "label": labels[c], "hint": COLLATERAL_HINTS[c]} for c in allowed]
+
+
+def collateral_label(client_id: str, code: str) -> str:
+    return next(o["label"] for o in collateral_options(client_id, [code]))
 
 
 _INTERNAL_OFFER_KEYS = {"grade", "second_approver_required", "analyst_approved"}
@@ -345,6 +448,9 @@ def client_view(c, app: dict) -> dict:
         "collateral": app["collateral"], "purpose": app["purpose"], "purpose_text": app["purpose_text"],
         "created": app["created"], "updated": app["updated"], "status": _status_view(app), "steps": STEPS,
         "offer": _client_offer(app["offer"]) if app["status"] not in ("DECLINED",) else None,
+        "collateral_label": collateral_label(app["client_id"], app["offer"]["collateral"] if app["offer"] else app["collateral"]),
+        "collateral_label_requested": collateral_label(app["client_id"], app["collateral"]),
+        "loan": loan_summary(app),
         "reasons": reasons if show else [], "doc_request": app["doc_request"],
         "contract": app["contract"], "schedule": _schedule(app),
         "sign_code": app["sign_code"] if app["status"] == "AWAITING_SIGNATURE" else None,

@@ -117,6 +117,7 @@ def products(u: dict = Depends(current_user)):
     cl = mocks.get_client(u["client_id"]) if u["client_id"] else None
     for k, p in policy()["products"].items():
         item = {"id": k, **{x: p[x] for x in ("title", "tagline", "kind", "min_amount", "max_amount", "min_term", "max_term", "collateral", "fee")}}
+        item["collateral_options"] = service.collateral_options(u["client_id"], p["collateral"])
         item["eligible"] = not (p.get("needs_msp_priority") and cl and not (cl["msp_registry"] and cl["priority_industry"]))
         out.append(item)
     return {"key_rate": st["key_rate"], "policy_version": policy()["version"], "products": out}
@@ -151,6 +152,10 @@ class SignIn(BaseModel):
     code: str
 
 
+class TopUpIn(BaseModel):
+    amount: int = Field(ge=1000, le=5_000_000)
+
+
 class DocsIn(BaseModel):
     note: str | None = None
 
@@ -164,8 +169,30 @@ def profile(u: dict = Depends(client_only)):
         "tenure_months": cl["tenure_months"], "receipts": cl["receipts"], "avg_receipts": round(p["avg"]), "dynamics": round(p["dynamics"], 3),
         "existing_payments": cl["existing_payments"], "key_rate": st["key_rate"],
         "msp": cl["msp_registry"] and cl["priority_industry"],
+        "account": service.account_view(u["client_id"]),
+        "loans": [x for x in (service.loan_summary(db.row_to_app(r)) for r in _disbursed_rows(u["client_id"])) if x],
         "preapproval": [{k: v for k, v in x.items() if k != "grade"} for x in pol.preapproval(cl, enr, st["key_rate"])],   # внутренний грейд клиенту не показываем
     }
+
+
+def _disbursed_rows(client_id: str):
+    with db.read() as c:
+        return c.execute("SELECT * FROM applications WHERE client_id=? AND status='DISBURSED' ORDER BY seq DESC", (client_id,)).fetchall()
+
+
+@app.get("/api/client/account", tags=["client"], summary="Расчётный счёт (демо): номер и баланс")
+def account(u: dict = Depends(client_only)):
+    return service.account_view(u["client_id"])
+
+
+@app.post("/api/client/account/topup", tags=["client"], summary="Пополнить счёт (демо, реальных операций нет)")
+def topup(body: TopUpIn, u: dict = Depends(client_only)):
+    return service.account_topup(u, body.amount)
+
+
+@app.post("/api/client/applications/{app_id}/pay", tags=["client"], summary="Оплатить ближайший платёж по графику (моделируется)")
+def pay(app_id: str, u: dict = Depends(client_only)):
+    return service.pay_next(u, app_id)
 
 
 @app.post("/api/client/quote", tags=["client"], summary="Симулятор «что если»")
