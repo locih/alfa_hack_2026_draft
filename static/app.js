@@ -428,6 +428,19 @@ function forYouBlock(prof, prod, active) {
       <div class="news-nav"><button class="btn sm" data-act="news-prev" aria-label="Назад">←</button><button class="btn sm" data-act="news-next" aria-label="Вперёд">→</button></div></div>
     <div class="feed-track" data-news data-auto>${cards}${news}</div></section>`;
 }
+// плавный шаг карусели: ~0.8 с с замедлением на концах (нативный smooth вдвое резче); snap отключён на время анимации
+function glide(t, dx, ms = 800) {
+  const from = t.scrollLeft, maxX = t.scrollWidth - t.clientWidth, to = Math.max(0, Math.min(maxX, from + dx)), t0 = performance.now();
+  if (t._glide) cancelAnimationFrame(t._glide);
+  const snap = t.style.scrollSnapType; t.style.scrollSnapType = "none";
+  const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const frame = (now) => {
+    const k = Math.min(1, (now - t0) / ms); t.scrollLeft = from + (to - from) * ease(k);
+    if (k < 1) t._glide = requestAnimationFrame(frame); else { t._glide = 0; t.style.scrollSnapType = snap; }
+  };
+  t._glide = requestAnimationFrame(frame);
+}
+
 function initCarousels() {
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   $$("[data-auto]:not([data-live])").forEach((t) => {
@@ -443,7 +456,7 @@ function initCarousels() {
       const maxX = t.scrollWidth - t.clientWidth;
       if (maxX < 4 || hover || performance.now() < pausedUntil || document.hidden) return;
       if (dir > 0 && t.scrollLeft >= maxX - 2) dir = -1; else if (dir < 0 && t.scrollLeft <= 2) dir = 1;
-      t.scrollBy({ left: dir * stepPx(), behavior: "smooth" });            // рывок на одну карточку
+      glide(t, dir * stepPx());                                              // шаг на одну карточку, плавно
     };
     t._timer = setInterval(tick, 3500);
   });
