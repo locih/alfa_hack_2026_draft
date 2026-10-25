@@ -423,25 +423,21 @@ function forYouBlock(prof, prod, active) {
 function initCarousels() {
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   $$("[data-auto]:not([data-live])").forEach((t) => {
-    t.dataset.live = "1"; let dir = 1, pausedUntil = 0, hover = false, last = 0, pos = t.scrollLeft;
-    const pause = (ms = 6000) => { pausedUntil = performance.now() + ms; pos = t.scrollLeft; };
+    t.dataset.live = "1"; let dir = 1, pausedUntil = performance.now() + 3000, hover = false;
+    const pause = (ms = 7000) => { pausedUntil = performance.now() + ms; };
     t.addEventListener("mouseenter", () => { hover = true; }); t.addEventListener("mouseleave", () => { hover = false; });
     t.addEventListener("focusin", () => { hover = true; }); t.addEventListener("focusout", () => { hover = false; });
     ["pointerdown", "touchstart", "wheel"].forEach((e) => t.addEventListener(e, () => pause(), { passive: true }));
-    t.closest(".feed")?.querySelectorAll("[data-act=news-prev],[data-act=news-next]").forEach((b) => b.addEventListener("click", () => pause(8000)));
-    const step = (ts) => {
-      if (!t.isConnected) return;
-      const dt = Math.min(50, ts - last); last = ts;
+    t.closest(".feed")?.querySelectorAll("[data-act=news-prev],[data-act=news-next]").forEach((bt) => bt.addEventListener("click", () => pause(9000)));
+    const stepPx = () => { const c0 = t.children[0], c1 = t.children[1]; return c1 ? c1.offsetLeft - c0.offsetLeft : (c0?.offsetWidth || 300) + 12; };
+    const tick = () => {
+      if (!t.isConnected) { clearInterval(t._timer); return; }
       const maxX = t.scrollWidth - t.clientWidth;
-      if (maxX > 4 && !hover && ts > pausedUntil && !document.hidden) {
-        if (Math.abs(t.scrollLeft - pos) > 2) pos = t.scrollLeft;            // пользователь прокрутил сам — продолжаем оттуда
-        pos = Math.max(0, Math.min(maxX, pos + dir * 0.028 * dt));          // ≈ 28 px/с, дробная позиция копится отдельно
-        t.scrollLeft = pos;
-        if (dir > 0 && pos >= maxX - 1) { dir = -1; pause(1800); } else if (dir < 0 && pos <= 1) { dir = 1; pause(1800); }
-      }
-      requestAnimationFrame(step);
+      if (maxX < 4 || hover || performance.now() < pausedUntil || document.hidden) return;
+      if (dir > 0 && t.scrollLeft >= maxX - 2) dir = -1; else if (dir < 0 && t.scrollLeft <= 2) dir = 1;
+      t.scrollBy({ left: dir * stepPx(), behavior: "smooth" });            // рывок на одну карточку
     };
-    pause(2500); requestAnimationFrame(step);
+    t._timer = setInterval(tick, 3500);
   });
 }
 

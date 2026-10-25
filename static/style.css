@@ -644,7 +644,7 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .sw.thin { background: var(--chart-line); height: 1px; opacity: .5; vertical-align: 3px; }
 
 /* единая лента «Для вас» */
-.feed.foryou { margin: 0 0 22px; padding: 0; overflow: visible; } .feed.foryou .feed-track { margin: 12px -20px 0; padding: 4px 20px 8px; overflow-x: auto; scroll-snap-type: none; scrollbar-width: none; align-items: stretch; }
+.feed.foryou { margin: 0 0 22px; padding: 0; overflow: visible; } .feed.foryou .feed-track { margin: 12px -20px 0; padding: 4px 20px 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-left: 20px; scrollbar-width: none; align-items: stretch; }
 .feed.foryou .feed-track::-webkit-scrollbar { display: none; } .feed.foryou .ncard { min-height: 100%; } .feed-head .news-nav { align-self: flex-start; }
 .chart .bar.drop { fill: url(#rgrad); opacity: .95; } .sw.drop { background: linear-gradient(180deg, #ff6b5e, #d61f12); }
 
@@ -654,3 +654,11 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .period-dates input[type=date] { padding: 8px 10px; border-radius: var(--radius-xs); border: 1px solid var(--line); background: var(--soft); color: var(--ink); font: inherit; font-size: 13px; color-scheme: dark; }
 :root[data-theme="light"] .period-dates input[type=date] { color-scheme: light; }
 .ops-scroll { max-height: 46vh; overflow: auto; }
+
+/* все баннеры ленты одного размера */
+.feed.foryou .fcard, .feed.foryou .ncard { width: 352px; min-height: 196px; scroll-snap-align: start; box-sizing: border-box; }
+.feed.foryou .fcard { padding: 20px 48px 18px 20px; } .feed.foryou .fcard .ftitle { font-size: 18px; } .feed.foryou .fcard .fwhen { display: block; font-size: 13px; margin-top: 2px; }
+.feed.foryou .fcard .fico { width: 40px; height: 40px; border-radius: 12px; } .feed.foryou .fcard .fico svg { width: 20px; height: 20px; } .feed.foryou .fcard .fico.img { width: 44px; height: 44px; }
+.feed.foryou .fcard .ftext { font-size: 13.5px; margin-bottom: 10px; } .feed.foryou .fcard .facts .btn { padding: 10px 16px; font-size: 14px; }
+.feed.foryou .fcard .fbody { display: flex; flex-direction: column; } .feed.foryou .fcard .facts { margin-top: auto; }
+@media (max-width: 600px) { .feed.foryou .fcard, .feed.foryou .ncard { width: 280px; min-height: 180px; } }
