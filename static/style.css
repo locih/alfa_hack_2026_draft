@@ -156,6 +156,12 @@ details > summary { cursor: pointer; }
 #app.enter .chart g:nth-of-type(12) .bar { animation-delay: 1148ms; }
 
 
+/* шаги заявки: подэтапы первого этапа общей шкалы */
+.substeps { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+.substeps .sub { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--card); color: var(--muted); font-size: 13px; font-weight: 500; transition: background .45s var(--ease), color .45s var(--ease); }
+.substeps .sub i { width: 22px; height: 22px; border-radius: 50%; background: var(--soft); color: var(--muted); font-style: normal; font-weight: 700; font-size: 12px; display: grid; place-items: center; transition: background .45s var(--ease), color .45s var(--ease); }
+.substeps .sub.now { color: var(--ink); font-weight: 600; } .substeps .sub.now i { background: var(--black); color: #fff; }
+.substeps .sub.done { color: var(--ink); } .substeps .sub.done i { background: var(--ok-fill); color: #fff; }
 /* шаги заявки */
 .pill { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 9px 16px; border-radius: 999px; font-weight: 500; font-size: 14px; cursor: pointer; transition: background 0.338s var(--ease), color 0.338s var(--ease), border-color 0.338s var(--ease), transform 0.338s var(--ease); }
 .pill:hover { background: var(--soft); } .pill.sel { background: var(--black); color: var(--card); border-color: var(--black); }

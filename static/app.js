@@ -402,7 +402,8 @@ function paintNew() {
         <button class="btn primary" data-act="submit-app" ${d.consents.pd && d.consents.bureau && d.consents.fns ? "" : "disabled"}>Отправить заявку</button></div>`;
   }
   render(h`${raw(topbar())}<main class="wrap" style="max-width:860px"><a href="#/client" class="small">← Главная</a><h1 class="mt">Новая заявка</h1>
-    <ol class="stepper mb" style="grid-template-columns:repeat(3,1fr)">${steps.map((s, i) => raw(`<li data-n="${i + 1}" class="${i + 1 < d.step ? "done" : i + 1 === d.step ? "now" : ""}">${esc(s)}</li>`))}</ol>
+    <ol class="stepper">${["Заявка", "Проверка", "Решение", "Подписание", "Выдача"].map((s, i) => raw(`<li data-n="${i + 1}" class="${i === 0 ? "now" : ""}">${esc(s)}</li>`))}</ol>
+    <div class="substeps mb" aria-label="Шаги заявки">${steps.map((s, i) => h`<span class="sub ${i + 1 < d.step ? "done" : i + 1 === d.step ? "now" : ""}"><i>${i + 1 < d.step ? "✓" : i + 1}</i>${s}</span>`)}</div>
     <div class="card ${d.step === 1 || d.step === 2 ? "calc" : ""}">${body}</div></main>`);
 }
 
