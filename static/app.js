@@ -417,6 +417,7 @@ function clientSection(k, c) {
   const loan = prof.loans.find((l) => !l.repaid && l.next_payment), best = prof.preapproval.filter((p) => p.available).sort((x, y) => y.max_amount - x.max_amount)[0];
   const last = prof.receipts.length - 1, prev = prof.receipts[last - 1] || 0, dl = prev ? Math.round((prof.receipts[last] / prev - 1) * 100) : 0;
   return h`${feedBlock(prof, prod, active)}${activeCard}
+    <div class="grid smart mb">${radarCard(c.forecast, prod)}${limitCard(c.limit, prod)}</div>
     <div class="tiles g4 mb">
       ${loan ? h`<a class="tile" href="#/client/loans"><span>Ближайший платёж</span><b data-count="${loan.next_payment.amount}">${rub(loan.next_payment.amount)}</b><span>до ${dateOnly(loan.next_payment.date)} · остаток ${rub(loan.outstanding)}</span></a>`
              : h`<a class="tile" href="#/client/loans"><span>Кредиты</span><b>${apps.length ? apps.length : "—"}</b><span>${apps.length ? plural(apps.length, "заявка", "заявки", "заявок") + " в истории" : "действующих кредитов нет"}</span></a>`}
@@ -424,10 +425,87 @@ function clientSection(k, c) {
       <a class="tile" href="#/client/receipts"><span>Поступления, ${monthName(monthOf(last), false)}</span><b data-count="${prof.receipts[last]}">${rub(prof.receipts[last])}</b><span>${dl >= 0 ? "+" : ""}${dl} % к прошлому месяцу · среднее ${rub(prof.avg_receipts)}</span></a>
       <a class="tile" href="#/client/receipts"><span>Платёжная нагрузка</span><b>${prof.avg_receipts ? Math.round(prof.existing_payments / prof.avg_receipts * 100) : 0} %</b><span>платежи по кредитам ${rub(prof.existing_payments)} от среднего поступления</span></a>
     </div>
+    ${newsBlock()}
     ${apps.length && !active ? h`<div class="card flat"><div class="row between wrapx"><div><b>Последняя заявка</b><br><span class="muted small">${apps[0].product_title} · ${rub(apps[0].amount)} · ${dateOnly(apps[0].created)}</span></div>${chip(apps[0].status.code, apps[0].status.title)}</div></div>` : ""}`;
 }
 
 let loanIdx = 0;
+
+// ---------- лента новостей и сервисов банка (требование кейса: «новостная лента под клиента») ----------
+const BANK_NEWS = [
+  { href: "https://alfabank.ru/corporate/news/", title: "Новости масштабного бизнеса", text: "Аналитика рынка и новости для вашего бизнеса первыми", tone: "blue" },
+  { href: "https://alfabank.ru/corporate/lab-robot/", title: "Лаборатория роботизации", text: "Считаем окупаемость, подбираем технологию и финансируем внедрение", tone: "graphite" },
+  { href: "https://alfabank.ru/corporate/china/", title: "Альфа-Банк для бизнеса с Китаем", text: "Расчёты, закупки и сопровождение компаний, работающих с КНР", tone: "red" },
+  { href: "https://alfabank.ru/sme/abp/services/market_puls/", title: "Пульс рынка", text: "Сравните себя с конкурентами по данным эквайринга", tone: "mint" },
+];
+function newsBlock() {
+  return h`<section class="news mb" aria-label="Новости и сервисы банка"><div class="row between wrapx"><h2 style="margin:0">Новости и сервисы банка</h2><span class="muted small">внешние страницы alfabank.ru</span></div>
+    <div class="news-track">${BANK_NEWS.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${i}"><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`)}</div></section>`;
+}
+
+
+// ---------- «Финансовый радар»: факт 12 мес. + прогноз 3 мес. + траектория остатка на 90 дней ----------
+function radarChart(f) {
+  const W = 600, H = 150, n = 15, bw = 28, gap = (W - n * bw) / (n - 1);
+  const vals = [...f.fact, ...f.months.map((m) => m.receipts)];
+  const max = Math.max(...vals) * 1.08;
+  const y = (v) => H - Math.max(0, v) / max * H, x = (i) => i * (bw + gap);
+  // у линии остатка своя шкала: от минимума траектории (или нуля) до максимума, в пределах зоны прогноза
+  const bal = f.path.map((p) => p.balance), bmin = Math.min(0, ...bal, f.cushion), bmax = Math.max(...bal, f.balance, f.cushion) * 1.05 || 1;
+  const yb = (v) => 8 + (H - 16) * (1 - (v - bmin) / (bmax - bmin));
+  const fx0 = x(12), fw = 3 * (bw + gap) - gap;
+  const px = (day) => fx0 + (day / f.horizon_days) * fw;
+  const pts = [[fx0, yb(f.balance)], ...f.path.map((p, i) => [px(i + 1), yb(p.balance)])];
+  const line = pts.map(([a, b], i) => (i ? "L" : "M") + a.toFixed(1) + " " + b.toFixed(1)).join(" ");
+  const gapPt = f.gap ? pts[f.gap.day] : null;
+  return h`<svg class="chart rchart" viewBox="0 0 ${W} ${H + 24}" role="img" aria-label="Поступления за 12 месяцев, прогноз на 3 месяца и остаток на счёте на 90 дней">
+    <rect class="r-fzone" x="${fx0 - gap / 2}" y="0" width="${fw + gap}" height="${H}" rx="8"/>
+    ${vals.map((v, i) => h`<g style="--i:${i}"><rect class="bar ${i < 12 ? "" : "fc"}" x="${x(i)}" y="${y(v)}" width="${bw}" height="${(H - y(v)).toFixed(1)}" rx="5"/>
+      <text x="${x(i) + bw / 2}" y="${H + 16}" text-anchor="middle">${i < 12 ? monthName(monthOf(i), false) : monthName(new Date(f.months[i - 12].month + "-01"), false) + "*"}</text></g>`)}
+    <line class="r-cushion" x1="${fx0}" x2="${fx0 + fw}" y1="${yb(f.cushion)}" y2="${yb(f.cushion)}"/>
+    ${bmin < 0 ? h`<line class="r-zero" x1="${fx0}" x2="${fx0 + fw}" y1="${yb(0)}" y2="${yb(0)}"/>` : ""}
+    <text class="r-axis" x="${fx0 + fw}" y="${yb(bmax / 1.05) - 2}" text-anchor="end">${Math.round(bmax / 1.05 / 1e6 * 10) / 10} млн ₽</text>
+    ${f.payments.filter((p) => p.kind !== "opex").map((p) => h`<line class="r-pay" x1="${px(dayIndex(f.today, p.date))}" x2="${px(dayIndex(f.today, p.date))}" y1="${H - 6}" y2="${H}"><title>${dateOnly(p.date)} · ${rub(p.amount)}</title></line>`)}
+    <path class="r-path" d="${line}"/>
+    ${gapPt ? h`<circle class="r-gap" cx="${gapPt[0]}" cy="${gapPt[1]}" r="5"/>` : ""}
+  </svg>`;
+}
+const dayIndex = (today, iso) => Math.round((new Date(iso) - new Date(today)) / 864e5);
+let radarScenario = 0;
+function radarCard(f, prod) {
+  if (!f) return h`<div class="card radar"><h2>Финансовый радар</h2><p class="muted">Прогноз недоступен.</p></div>`;
+  const g = f.gap, o = f.offer, scn = [[0, "Базовый"], [-0.2, "Спад −20 %"], [-0.4, "Спад −40 %"]];
+  const msg = g ? h`<div class="r-msg bad"><b>Через ${g.day} ${plural(g.day, "день", "дня", "дней")} возможен кассовый разрыв около ${rub(g.amount)}.</b>
+      <span>${dateOnly(g.date)} остаток упадёт ниже подушки ${rub(f.cushion)}; минимум ${rub(g.lowest_balance)} ${dateOnly(g.lowest_date)}.
+      ${o ? h`Закрыть дешевле всего: <b>${prod[o.product]?.title ?? o.product}</b> на ${rub(o.amount)}${o.product === "overdraft" ? " — проценты только за дни использования" : ""}, ставка от ${pct(o.rate_from)}.` : "Подходящий продукт подберём в заявке."}</span>
+      ${o ? h`<a class="btn primary" href="#/client/new?product=${o.product}&amount=${o.amount}&term=${o.term}&purpose=gap">Подключить к ${dateOnly(g.date)} →</a>` : h`<a class="btn primary" href="#/client/products">Подобрать продукт →</a>`}</div>`
+    : h`<div class="r-msg ok"><b>Ближайшие 90 дней без кассовых разрывов.</b>
+      <span>Свободно до <b class="num">${rub(f.free_cash)}</b> сверх подушки ${rub(f.cushion)} — можно вкладывать в закупку или развитие без заёмных денег.</span>
+      <a class="btn" href="#/client/products">Посмотреть предложения →</a></div>`;
+  return h`<div class="card radar"><div class="row between wrapx"><div><h2>Финансовый радар</h2><div class="muted small">Поступления за 12 месяцев, прогноз на 3 и остаток на счёте на 90 дней вперёд</div></div>
+      <div class="ptabs scn">${scn.map(([v, t]) => h`<button class="ptab ${v === f.scenario ? "sel" : ""}" data-act="radar-scn" data-v="${v}">${t}</button>`)}</div></div>
+    ${radarChart(f)}
+    <div class="r-legend small muted"><span><i class="sw t"></i>поступления</span><span><i class="sw tf"></i>прогноз*</span><span><i class="sw g"></i>остаток на счёте</span><span><i class="sw gd"></i>подушка — месяц обязательных платежей</span><span><i class="sw r"></i>платежи по кредитам</span></div>
+    ${msg}
+    <p class="hint">Модель прозрачная: сезонность того же месяца год назад × тренд полугодия × маржа отрасли; расходы — в дни зарплат, аренды и поставщиков; списания — по графику платежей. Прогноз, не гарантия.</p></div>`;
+}
+
+// ---------- «Умный лимит»: одна сумма платёжеспособности на все продукты + что её поднимет ----------
+function limitCard(l, prod) {
+  if (!l) return "";
+  if (!l.limit) return h`<div class="card limitcard"><h2>Умный лимит</h2><p class="muted">Лимит пока не рассчитан: не хватает данных источников. Подайте заявку — рассмотрим вручную.</p>
+    ${l.growth.length ? h`<ul class="growth">${l.growth.map((g) => h`<li><b>${g.title}</b><span class="muted small">${g.how}</span></li>`)}</ul>` : ""}</div>`;
+  const usedPct = Math.min(100, Math.round(l.used / l.limit * 100));
+  return h`<div class="card limitcard"><div class="row between wrapx"><h2>Умный лимит</h2><span class="chip violet">одна проверка — все продукты</span></div>
+    <div class="lim-big num" data-count="${l.limit}">${rub(l.limit)}</div>
+    <div class="lim-bar" role="progressbar" aria-valuenow="${usedPct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${usedPct}%"></span></div>
+    <div class="row between small muted"><span>использовано ${rub(l.used)}</span><span>доступно <b class="num">${rub(l.available)}</b></span></div>
+    <div class="lim-products">${l.products.map((p) => h`<a class="chip" href="#/client/new?product=${p.product}" title="до ${rub(p.max_amount)}">${prod[p.product]?.title ?? p.product} · до ${rub(p.max_amount)}</a>`)}</div>
+    <h3 class="mt">Как вырастить лимит</h3>
+    <ul class="growth">${l.growth.map((g) => h`<li><div><b>${g.title}</b><span class="muted small">${g.how}</span></div><span class="eff ${g.effect ? "" : "muted"}">${g.effect ? "+" + rub(g.effect) : "уточним после"}</span></li>`)}</ul>
+    <p class="hint">${l.note}. Комфортный платёж до ${rub(l.p_max)} в месяц.</p></div>`;
+}
+
 
 // мини-график остатка долга по графику платежей (оплаченная часть — сплошная)
 function balanceSpark(rows, l) {
@@ -488,7 +566,8 @@ async function viewClient(tab = "overview") {
   clientTab = CLIENT_TABS.some(([k]) => k === tab) ? tab : "overview";
   const ids = [...new Set([...prof.loans.map((l) => l.app_id), ...apps.slice(0, 6).map((a) => a.id)])];
   const det = Object.fromEntries((await Promise.all(ids.map((id) => api("/client/applications/" + id).then((d) => [id, d]).catch(() => [id, null])))));
-  window.__prof = prof; window.__client = { prof, apps, cat, prod, active, det };
+  const [forecast, limit] = await Promise.all([api("/client/forecast").catch(() => null), api("/client/limit").catch(() => null)]);
+  window.__prof = prof; window.__client = { prof, apps, cat, prod, active, det, forecast, limit };
   window.__notifs = buildNotifs(window.__client);
   stopPoll();
   render(h`${raw(topbar())}<main class="wrap">
@@ -513,6 +592,9 @@ async function viewNew(params) {
   const [prof, cat] = await Promise.all([api("/client/profile"), api("/products")]);
   if (!draft) draft = { step: 1, product: params.get("product") || null, purpose: null, amount: 1000000, term: 12, collateral: "none", purpose_text: "", consents: { pd: false, bureau: false, fns: false } };
   if (params.get("product") && !draft.product) draft.product = params.get("product");
+  if (params.get("amount")) draft.amount = Math.max(1, +params.get("amount") || draft.amount);
+  if (params.get("term")) draft.term = Math.max(1, +params.get("term") || draft.term);
+  if (params.get("purpose") && PURPOSES.some((x) => x.id === params.get("purpose"))) { draft.purpose = params.get("purpose"); if (!draft.purpose_text && params.get("purpose") === "gap") draft.purpose_text = "Кассовый разрыв по прогнозу финансового радара"; }
   draft.cat = cat; draft.prof = prof;
   paintNew();
 }
@@ -911,6 +993,11 @@ const act = {
   "demo-login": (el) => doLogin(el.dataset.login, "demo123"),
   "receipts-details": () => { if (window.__prof) showReceipts(window.__prof.receipts, receiptsMonth); },
   "loan-pick": (el) => { loanIdx = +el.dataset.i; repaintSection(); },
+  "radar-scn": async (el) => {
+    const v = +el.dataset.v; if (!window.__client) return;
+    try { window.__client.forecast = await api("/client/forecast?scenario=" + v); } catch (e) { toast(e.message, true); return; }
+    const card = $(".card.radar"); if (card) { card.outerHTML = radarCard(window.__client.forecast, window.__client.prod).s; $(".card.radar")?.classList.add("in"); }
+  },
   "prepay-amt": () => {},
   "notif": () => { const p = $("#notif-panel"); if (p) return p.remove(); document.body.insertAdjacentHTML("beforeend", notifPanel().s); try { localStorage.setItem("notif-seen", new Date().toISOString()); } catch { /* приватный режим */ } $(".bell .nbadge")?.remove(); },
   "notif-close": () => $("#notif-panel")?.remove(),

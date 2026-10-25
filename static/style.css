@@ -12,6 +12,7 @@
   --bad: #d72505; --bad-fill: var(--color-light-status-negative, #ff4837); --bad-soft: #ffebeb;
   --info: #2c64d4; --info-fill: var(--color-light-status-info, #2288fa); --info-soft: #e4f0ff;
   --violet: var(--color-static-brand-violet, #6a4dff); --violet-hover: #5a3df0; --violet-soft: #efecff; --violet-ink: #4a30c9;
+  --teal: #17c2b4; --teal-deep: #0e9f93; --teal-soft: rgba(23,194,180,.22); --gold: #e2b86a;
   --radius: var(--border-radius-20, 20px); --radius-s: var(--border-radius-16, 16px); --radius-xs: var(--border-radius-12, 12px);
   --shadow: none; --shadow-hover: var(--shadow-xs, 0 4px 8px rgba(0,0,0,.04), 0 0 1px rgba(0,0,0,.04));
   --ease: cubic-bezier(.16,1,.3,1); --ease-io: cubic-bezier(.65,0,.35,1); --t-fast: 0.45s; --t-base: 1.01s; --t-slow: 1.58s;
@@ -32,8 +33,6 @@
 :root[data-theme="dark"] .fcard.pay .fx { background: rgba(0,0,0,.06); color: #0f0f10; } :root[data-theme="dark"] .fcard.pay .btn.link { color: rgba(0,0,0,.65); }
 :root[data-theme="dark"] .login-form form { background: var(--card); }
 :root[data-theme="dark"] #issued-overlay { background: rgba(15,15,16,.94); }
-:root[data-theme="dark"] .sv-col .i, :root[data-theme="dark"] .sw.i { background: rgba(255,255,255,.55); }
-:root[data-theme="dark"] .island .sv-col .i, :root[data-theme="dark"] .island .sw.i { background: #212124; }
 :root[data-theme="dark"] .pimg { filter: drop-shadow(0 14px 18px rgba(0,0,0,.5)); }
 :root[data-theme="dark"] .tile { border-color: transparent; }
 :root[data-theme="dark"] .task-left .pill { background: var(--soft); }
@@ -417,10 +416,10 @@ table.t tr.focus td { background: var(--warn-soft); }
 .chart-info .chart-sum { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
 .chart-delta { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--soft); color: var(--muted); }
 .chart-delta.up { background: var(--ok-soft); color: var(--ok); } .chart-delta.down { background: var(--bad-soft); color: var(--bad); }
-.chart .bar { fill: var(--accent); opacity: .85; transition: opacity .35s var(--ease), fill .35s var(--ease); } .chart .bar.prev { fill: #aeb8c4; }
+.chart .bar { fill: var(--teal); opacity: .9; transition: opacity .35s var(--ease), fill .35s var(--ease); } .chart .bar.prev { fill: var(--teal); opacity: .45; }
 .chart .bar-hit { fill: transparent; cursor: pointer; }
 .chart .bar-g { outline: none; } .chart .bar-g:focus-visible .bar { stroke: var(--info-fill); stroke-width: 2; }
-.chart-wrap.hovering .bar { opacity: .35; } .chart-wrap.hovering .bar-g.on .bar { opacity: 1; fill: var(--accent); }
+.chart-wrap.hovering .bar { opacity: .3; } .chart-wrap.hovering .bar-g.on .bar { opacity: 1; fill: var(--teal-deep); }
 .chart-wrap.hovering .bar-g.on text { fill: var(--ink); font-weight: 700; }
 /* модальное окно */
 #modal { position: fixed; inset: 0; z-index: 60; background: rgba(15,15,16,.45); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 24px; animation: fade-in .4s var(--ease) both; }
@@ -549,7 +548,7 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 /* кредиты: переключатель, мини-график остатка, досрочное погашение, архив */
 .loan-switch { padding: 4px; } .loan-switch .ptab { padding: 8px 14px; font-size: 14px; } .loan-switch .ptab small { font-weight: 400; opacity: .7; margin-left: 4px; }
 .spark { margin: 14px 0 4px; } .spark svg { width: 100%; height: 72px; display: block; }
-.sp-area { fill: rgba(239,49,36,.08); } .sp-line { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.sp-area { fill: var(--teal-soft); } .sp-line { fill: none; stroke: var(--teal); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .sp-now { stroke: var(--ink); stroke-dasharray: 3 3; opacity: .5; vector-effect: non-scaling-stroke; } .sp-dot { fill: var(--ink); }
 .prepay summary { cursor: pointer; } .prepay .opt { background: var(--soft); border-radius: var(--radius-xs); padding: 14px 16px; } .prepay .opt .big { font-size: 24px; margin: 4px 0; }
 .ok-text { color: var(--ok); font-weight: 600; } .prepay input[type=number] { width: 100%; }
@@ -558,9 +557,9 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .sched-viz { padding: 12px 14px; background: var(--soft); border-radius: var(--radius-xs); }
 .sv-bars { display: flex; align-items: flex-end; gap: 3px; height: 120px; margin: 10px 0 6px; }
 .sv-col { flex: 1; display: flex; flex-direction: column-reverse; height: 100%; min-width: 0; }
-.sv-col span { display: block; width: 100%; } .sv-col .p { background: var(--accent); border-radius: 3px 3px 0 0; } .sv-col .i { background: var(--black); border-radius: 0 0 3px 3px; }
+.sv-col span { display: block; width: 100%; } .sv-col .p { background: var(--teal); border-radius: 3px 3px 0 0; } .sv-col .i { background: var(--accent); border-radius: 0 0 3px 3px; }
 .sv-col.paid .p, .sv-col.paid .i { opacity: .35; }
-.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; } .sw.p { background: var(--accent); } .sw.i { background: var(--black); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; } .sw.p { background: var(--teal); } .sw.i { background: var(--accent); }
 #app.enter .sv-col span { transform-origin: bottom; animation: fill-grow 1.35s var(--ease) both; }
 /* уведомления */
 .bell { position: relative; border: 0; background: var(--soft); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); cursor: pointer; margin-right: 10px; transition: background var(--t-fast) var(--ease); }
@@ -581,3 +580,42 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .rcard .start { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); }
 .rcard.first .av { margin-top: 18px; }
 @media (max-width: 900px) { .theme-wrap.light .theme-btn { margin-bottom: 28px; } }
+
+/* «Финансовый радар» и «Умный лимит» */
+.grid.smart { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); }
+@media (max-width: 900px) { .grid.smart { grid-template-columns: 1fr; } }
+.radar .scn { padding: 4px; } .radar .scn .ptab { padding: 8px 12px; font-size: 13px; }
+.rchart { width: 100%; height: auto; margin-top: 12px; }
+.r-fzone { fill: var(--soft); } .rchart .bar.fc { fill: var(--teal-soft); stroke: var(--teal); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.r-path { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.r-cushion { stroke: var(--gold); stroke-width: 1; stroke-dasharray: 5 4; opacity: .7; }
+.r-pay { stroke: var(--accent); stroke-width: 3; } .r-gap { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+.r-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 12px; }
+.sw.t { background: var(--teal); } .sw.tf { background: var(--teal-soft); border: 1px dashed var(--teal); } .sw.g { background: var(--gold); height: 3px; vertical-align: 3px; } .sw.gd { background: var(--gold); height: 2px; opacity: .7; vertical-align: 3px; } .sw.r { background: var(--accent); }
+.r-msg { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: var(--radius-xs); margin-bottom: 10px; }
+.r-msg.bad { background: var(--bad-soft); } .r-msg.bad > b { color: var(--bad); font-size: 17px; }
+.r-msg.ok { background: var(--ok-soft); } .r-msg.ok > b { color: var(--ok); font-size: 17px; }
+.r-msg .btn { align-self: flex-start; margin-top: 6px; }
+.limitcard .lim-big { font-size: 40px; line-height: 1.05; letter-spacing: -.02em; margin: 10px 0 10px; }
+.lim-bar { height: 10px; border-radius: 5px; background: var(--soft); overflow: hidden; margin-bottom: 6px; } .lim-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--violet), var(--teal)); border-radius: 5px; transition: width 1.2s var(--ease); }
+.lim-products { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; } .lim-products .chip { text-decoration: none; }
+.growth { list-style: none; margin: 8px 0 0; padding: 0; } .growth li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.growth li > div { display: flex; flex-direction: column; } .growth .eff { font-weight: 700; color: var(--ok); white-space: nowrap; }
+/* рост графиков при появлении раздела и экрана */
+#app.enter .rchart .bar, #ctab.in .chart .bar, #ctab.in .rchart .bar, .card.radar.in .bar { transform-box: fill-box; transform-origin: bottom; animation: bar-grow 1.2s var(--ease) both; animation-delay: calc(var(--i, 0) * 55ms); }
+#app.enter .r-path, #ctab.in .r-path, .card.radar.in .r-path { stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: draw-line 2.2s var(--ease) .9s forwards; }
+@keyframes draw-line { to { stroke-dashoffset: 0; } }
+#app.enter .r-gap, #ctab.in .r-gap, .card.radar.in .r-gap { animation: fade-in .6s var(--ease) 2.6s both; }
+#ctab.in .sv-col span { transform-origin: bottom; animation: fill-grow 1.35s var(--ease) both; }
+
+/* новости и сервисы банка */
+.news { margin-top: 4px; } .news-track { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+.ncard { display: flex; flex-direction: column; gap: 6px; min-height: 150px; padding: 18px 18px 16px; border-radius: var(--radius); color: #fff; text-decoration: none; position: relative; overflow: hidden; transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); animation: rise .9s var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms); }
+.ncard:hover { transform: translateY(-3px); text-decoration: none; box-shadow: 0 16px 30px -18px rgba(0,0,0,.5); }
+.ncard b { font-size: 16px; line-height: 1.2; } .ncard span { font-size: 13px; opacity: .78; line-height: 1.4; } .ncard .go { margin-top: auto; font-style: normal; font-size: 13px; font-weight: 600; opacity: .9; }
+.ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #2f2fbf 0%, #0f1038 60%, #0b0b16 100%); }
+.ncard.graphite { background: radial-gradient(120% 120% at 100% 0%, #3a3a40 0%, #1a1a1d 60%, #111 100%); }
+.ncard.red { background: radial-gradient(120% 120% at 100% 0%, #ff5a4a 0%, #b4140a 55%, #3a0a07 100%); }
+.ncard.mint { background: radial-gradient(120% 120% at 100% 0%, #7ff0d9 0%, #17c2b4 50%, #0a6f66 100%); color: #06211e; } .ncard.mint span { opacity: .85; }
+@media (max-width: 900px) { .news-track { grid-template-columns: 1fr 1fr; } } @media (max-width: 600px) { .news-track { grid-template-columns: 1fr; } }
+.r-zero { stroke: var(--bad); stroke-width: 1; stroke-dasharray: 2 3; opacity: .8; } .r-axis { fill: var(--gold); font-size: 10px; }
