@@ -675,7 +675,7 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 /* все баннеры ленты одного размера */
 .feed.foryou .fcard, .feed.foryou .ncard { width: 352px; min-height: 196px; scroll-snap-align: start; box-sizing: border-box; }
 .feed.foryou .fcard { padding: 18px 48px 16px 18px; } .feed.foryou .fcat { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; margin-bottom: 10px; line-height: 1.2; }   /* рубрика как у плиток — текст начинается на одной высоте */ .feed.foryou .fcard .ftitle { font-size: 18px; } .feed.foryou .fcard .fwhen { display: block; font-size: 13px; margin-top: 2px; }
-.feed.foryou .fcard { align-items: flex-start; } .feed.foryou .fcard .fico { width: 40px; height: 40px; margin-top: 18px; border-radius: 12px; } .feed.foryou .fcard .fico svg { width: 20px; height: 20px; } .feed.foryou .fcard .fico.img { width: 44px; height: 44px; }
+.feed.foryou .fcard { align-items: stretch; } .feed.foryou .fcard .fico { align-self: flex-start; width: 40px; height: 40px; margin-top: 18px; border-radius: 12px; } .feed.foryou .fcard .fico svg { width: 20px; height: 20px; } .feed.foryou .fcard .fico.img { width: 44px; height: 44px; }
 .feed.foryou .fcard .ftext { font-size: 13.5px; margin-bottom: 10px; } .feed.foryou .fcard .facts .btn { padding: 10px 16px; font-size: 14px; }
 .feed.foryou .fcard .fbody { display: flex; flex-direction: column; } .feed.foryou .fcard .facts { margin-top: auto; }
 @media (max-width: 600px) { .feed.foryou .fcard, .feed.foryou .ncard { width: 280px; min-height: 180px; } }
