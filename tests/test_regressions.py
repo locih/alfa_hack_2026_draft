@@ -257,9 +257,14 @@ def test_bureau_retries_use_exponential_backoff_with_jitter(monkeypatch):
     from app import mocks
     sleeps = []
     monkeypatch.setattr(mocks.time, "sleep", sleeps.append)
+    monkeypatch.setattr(mocks.random, "random", lambda: 0.5)                                # множитель джиттера = 1,0
     enr, log = mocks.collect(mocks.get_client("C-A"), False, "down", retries=2, backoff=0.2)
-    assert enr["bureau"]["status"] == "UNAVAILABLE" and len(sleeps) == 2                    # между тремя попытками две паузы
-    assert 0.1 <= sleeps[0] <= 0.3 and 0.2 <= sleeps[1] <= 0.6 and sleeps[1] > sleeps[0] * 0.9
+    assert enr["bureau"]["status"] == "UNAVAILABLE" and sleeps == [0.2, 0.4]                # между тремя попытками две паузы, вторая вдвое длиннее
+    for r, lo, hi in ((0.0, 0.1, 0.1), (1.0, 0.3, 0.3)):                                    # границы джиттера: от 0,5× до 1,5× базовой паузы
+        sleeps.clear()
+        monkeypatch.setattr(mocks.random, "random", lambda r=r: r)
+        mocks.collect(mocks.get_client("C-A"), False, "down", retries=1, backoff=0.2)
+        assert sleeps == [pytest.approx(lo)]
     sleeps.clear()
     mocks.collect(mocks.get_client("C-A"), False, "down", retries=2)                          # backoff=0 → без пауз (тесты и режим STEP_DELAY_SEC=0)
     assert sleeps == []

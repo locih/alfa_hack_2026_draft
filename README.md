@@ -8,7 +8,7 @@
 
 ## Запуск (одна команда)
 
-Нужен Docker 24+: образ занимает около 300 МБ, приложению хватает 100 МБ памяти. LLM, внешние сервисы и интернет не требуются.
+Нужен Docker 24+: образ без ML занимает около 260 МБ, приложение в покое использует около 40 МБ памяти (образ с LightGBM заметно больше). LLM, внешние сервисы и интернет не требуются.
 
 ```bash
 docker compose up --build --wait
@@ -33,6 +33,8 @@ pytest -q                               # тесты ядра, каскада и
 | `DEMO_MODE` | `1` | при `0` с экрана входа пропадают список демо-учёток и пароль (нужно, если стенд не для демонстрации) |
 | `DB_PATH` | `/data/app.db` | файл SQLite |
 | `MODEL_DIR` | `/models/pd_current` | каталог обученной PD-модели (необязательно) |
+| `CONFIG_DIR` | `config/` | каталог с `products.yaml` (при запуске без Docker из другой папки) |
+| `STATIC_DIR` | `static/` | каталог со статическим интерфейсом |
 
 Как выложить публичное демо на бесплатный хостинг (Render), описано в [docs/deploy.md](docs/deploy.md). Оно дополняет локальный запуск и не заменяет его. Swagger: <http://localhost:8000/docs>.
 
@@ -114,12 +116,12 @@ pytest -q                               # тесты ядра, каскада и
 | Шаг | Статусы | Что происходит |
 |---|---|---|
 | 1. Заявка | DRAFT | создание заявки (идемпотентно), согласия |
-| 2. Проверка | VERIFICATION, AWAITING_DOCS | допуск и стоп-правила, запросы в ЕГРЮЛ, ФНС, БКИ (таймаут, 2 повтора), данные банка; при нехватке данных — запрос документов |
+| 2. Проверка | VERIFICATION, AWAITING_DOCS | допуск и стоп-правила, запросы в ЕГРЮЛ, ФНС, БКИ (таймаут, 2 повтора), данные банка; аналитик может запросить документы |
 | 3. Решение | DECISIONING, MANUAL_REVIEW, OFFER_READY, DECLINED | скоринг, платёжеспособность, цена; как просили / встречное / ручной разбор / отказ |
 | 4. Подписание | AWAITING_SIGNATURE | код подтверждения (имитация простой ЭП) |
 | 5. Выдача | DISBURSING, DISBURSED | договор, график платежей, моделируемое зачисление |
 
-Завершения без выдачи: DECLINED (отказ), WITHDRAWN (клиент отозвал или отказался от предложения), EXPIRED (истёк срок документов, оферты или подписания).
+Завершения без выдачи: DECLINED (отказ), WITHDRAWN (клиент отозвал или отказался от предложения), EXPIRED (истёк срок оферты; переходы по сроку документов и подписания зарезервированы, таймеров под них нет).
 
 ## Скоринг и решение
 
@@ -181,7 +183,7 @@ docker build -f ml/Dockerfile -t credit-ml . && docker run --rm -v "$PWD":/work 
 app/        FastAPI: main (API), service (конвейер, действия), policy, scoring, pricing, mocks, states, reasons, db, cascade, pd_provider
 static/     UI без сборки: index.html, app.js, style.css
 config/     products.yaml — продукты, цены, грейды, пороги каскада
-ml/         features, train, predict, synth, Dockerfile (опциональный ML-слой)
+ml/         features, scale, train, predict, synth, Dockerfile (опциональный ML-слой)
 tests/      unit- и сквозные тесты, verify_numbers.py
 docs/       process-model, architecture, state-diagram, credit-policy, ml, test-scenarios, assumptions, deploy, api-examples.http
 Dockerfile, docker-compose.yml, render.yaml, requirements*.txt, requirements.lock, THIRD_PARTY_NOTICES.md

@@ -8,21 +8,21 @@ stateDiagram-v2
     DRAFT --> VERIFICATION: клиент отправил заявку
     VERIFICATION --> DECISIONING: данные получены, стоп-правил нет
     VERIFICATION --> MANUAL_REVIEW: источник недоступен после повторов
-    VERIFICATION --> AWAITING_DOCS: не хватает данных
+    VERIFICATION --> AWAITING_DOCS: зарезервирован (в демо документы запрашивает аналитик)
     VERIFICATION --> DECLINED: сработало стоп-правило / продукт недоступен
     AWAITING_DOCS --> VERIFICATION: клиент предоставил документы
-    AWAITING_DOCS --> EXPIRED: срок истёк
+    AWAITING_DOCS --> EXPIRED: зарезервирован (таймера нет)
     DECISIONING --> OFFER_READY: автоодобрение или встречное предложение
     DECISIONING --> MANUAL_REVIEW: грейд D, граница балла, сумма выше автолимита, флаги
-    DECISIONING --> AWAITING_DOCS: нужны данные для расчёта
+    DECISIONING --> AWAITING_DOCS: зарезервирован (в демо документы запрашивает аналитик)
     DECISIONING --> DECLINED: грейд E или нет допустимых условий
     MANUAL_REVIEW --> OFFER_READY: аналитик одобрил / изменил условия
     MANUAL_REVIEW --> AWAITING_DOCS: аналитик запросил документы
     MANUAL_REVIEW --> DECLINED: аналитик отказал (причины обязательны)
     OFFER_READY --> AWAITING_SIGNATURE: клиент принял
-    OFFER_READY --> EXPIRED: срок оферты 14 дней
+    OFFER_READY --> EXPIRED: срок оферты 14 дней, проверяется при принятии
     AWAITING_SIGNATURE --> DISBURSING: код подтверждения верный
-    AWAITING_SIGNATURE --> EXPIRED: срок подписания
+    AWAITING_SIGNATURE --> EXPIRED: зарезервирован (таймера нет)
     DISBURSING --> DISBURSED: моделируемое зачисление
     DISBURSED --> [*]
     DECLINED --> [*]
@@ -34,6 +34,8 @@ stateDiagram-v2
         заявку или отказался от предложения)
     end note
 ```
+
+Не все разрешённые переходы используются в демо. Заявку переводят в `AWAITING_DOCS` только аналитик (из `MANUAL_REVIEW`), а срок оферты проверяется в момент принятия. Переходы по сроку документов и подписания, а также автоматический запрос документов оставлены в таблице как заготовка, таймеров под них нет.
 
 ## Статус → что видит клиент
 
