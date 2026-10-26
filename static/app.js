@@ -996,7 +996,7 @@ function paintApp(a, silent = false) {
   }
   if (code === "AWAITING_SIGNATURE") {
     ctx = h`${ctx}<div class="card mt"><h2>Подписание</h2>
-      <div class="grid g3 mb docs">${[["договор", "Кредитный договор"], ["", "Согласие на обработку данных"], ["график платежей", "График платежей"]].map(([k, x]) => h`<div class="card flat small">📄 ${k ? T(k, x) : x}<br><span class="chip">готов</span></div>`)}</div>
+      <div class="grid g3 mb docs">${[["договор", "Кредитный договор"], ["", "Согласие на обработку данных"], ["график платежей", "График платежей"]].map(([k, x]) => h`<div class="card flat small"><div class="doc-t"><span class="doc-ico" aria-hidden="true">📄</span><span>${k ? T(k, x) : x}</span></div><span class="chip">готов</span></div>`)}</div>
       <div class="notice mb"><b>Вы подписываете:</b> ${a.offer.payment == null ? h`${T("лимит", "лимит")} ${rub(a.offer.amount)}` : h`кредит ${rub(a.offer.amount)} на ${a.offer.term} мес.`}, ${T("ставка", "ставка")} ${pct(a.offer.rate)}${a.offer.payment ? h`, ${T("платёж", "платёж")} ${rub(a.offer.payment)} в месяц, ${T("переплата", "переплата")} ${rub(a.offer.overpayment)}` : ""}; ${T("обеспечение", "обеспечение")}: ${a.collateral_label.toLowerCase()}. ${T("досрочное погашение", "Досрочное погашение")} без штрафа. Наведите курсор на подчёркнутое слово, чтобы увидеть пояснение.</div>
       <p>Подтвердите подписание кодом — это ${T("простая электронная подпись", "простая электронная подпись")} (имитация): в реальной системе код приходил бы в приложение банка.</p>
       <div class="row wrapx"><div>Код (демо): <span class="code">${a.sign_code}</span></div></div>

@@ -705,6 +705,7 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 @media (max-width: 900px) { .feed, .feed.foryou .feed-track { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; scroll-padding-left: 14px; } }   /* выпуск ленты = отступ .wrap */
 
 /* подписание: плитки документов — статус прижат к низу, у всех на одном уровне */
-.docs .card { display: flex; flex-direction: column; gap: 10px; } .docs .card .chip { margin-top: auto; align-self: flex-start; }
+.docs .card { display: flex; flex-direction: column; gap: 14px; } .docs .card .chip { margin-top: auto; align-self: flex-start; }
+.docs .doc-t { display: flex; gap: 8px; align-items: flex-start; line-height: 1.35; } .docs .doc-ico { flex: none; } .docs .term { white-space: normal; }
 /* заголовок карточки аналитика: версия карты не липнет к баллам */
 .head-ver { gap: 8px 12px; margin-bottom: 16px; } .head-ver h2 { margin: 0; }
