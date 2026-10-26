@@ -436,7 +436,7 @@ table.ops td { padding: 12px 10px; }
 
 
 @media (max-width: 900px) {
-  .g2, .g3, .g4, .cols, .tiles { grid-template-columns: 1fr; }
+  .g2, .g3, .g4, .cols, .tiles { grid-template-columns: minmax(0, 1fr); }
   .stepper li { font-size: 11px; } .bars .b { grid-template-columns: 120px 1fr 48px; }
   .topbar .in { flex-wrap: wrap; } .wrap { padding: 16px 14px 48px; }
 }
