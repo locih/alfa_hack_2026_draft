@@ -513,7 +513,7 @@ table.sched tr.paid td { color: var(--muted); }
 
 /* правки по аудиту: компактная таблица графика в узкой колонке, подпись шага заявки */
 table.sched { font-size: 13.5px; } table.sched th { padding: 10px 8px; white-space: nowrap; } table.sched td { padding: 10px 8px; white-space: nowrap; }
-.substep { margin: 4px 0 18px; display: flex; align-items: center; gap: 10px; } .substep .chip { background: var(--black); color: var(--on-black); }
+.substep { margin: 22px 0 18px; display: flex; align-items: center; gap: 10px; }   /* воздух между степпером и чипом шага */ .substep .chip { background: var(--black); color: var(--on-black); }
 
 /* главная клиента: разделы */
 .card.head { padding: 24px 24px 20px; } .card.head h1 { margin-bottom: 4px; } .card.head .row { margin-bottom: 18px; }
