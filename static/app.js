@@ -767,7 +767,7 @@ async function viewClient(tab = "overview") {
   render(h`${raw(topbar())}<main class="wrap">
     <div class="card head mb"><div class="row between wrapx"><div><h1>${cn.name}</h1>
       <div class="muted">ИНН ${cn.inn} · ${cn.okved} · в банке ${prof.tenure_months} мес. · ${cn.tax_regime}</div></div>
-      <span class="chip">Ключевая ставка ${pct(prof.key_rate)}</span></div>
+      <a class="keyrate" href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener" title="Ключевая ставка Банка России — от неё считается ставка по кредиту"><small>Ключевая ставка ЦБ</small><b>${pct(prof.key_rate)}</b></a></div>
     <nav class="ptabs client-tabs" aria-label="Разделы кабинета">${CLIENT_TABS.map(([k, t]) => h`<a class="ptab ${k === clientTab ? "sel" : ""}" href="#/client/${k}" data-act="client-tab" data-k="${k}">${t}${k === "loans" && active ? raw('<span class="cnt hot">1</span>') : ""}</a>`)}</nav></div>
     <div id="ctab" data-tab="${clientTab}">${clientSection(clientTab, window.__client)}</div></main>`);
   initCarousels();
