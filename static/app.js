@@ -888,7 +888,7 @@ function refreshQuote() {
 // ---------- клиент: заявка ----------
 // полноэкранный момент выдачи: один раз на заявку в этой вкладке
 // полноэкранная «галочка»: выдача кредита, внесённый платёж, полное погашение
-function showCelebrate({ label, title, sum, sub, button, auto = 12000 }) {
+function showCelebrate({ label, title, sum, sub, button, onButton, second, auto = 12000 }) {
   document.getElementById("issued-overlay")?.remove();
   const el = document.createElement("div"); el.id = "issued-overlay"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", label);
   el.innerHTML = h`<div class="iss-glow"></div>
@@ -897,12 +897,16 @@ function showCelebrate({ label, title, sum, sub, button, auto = 12000 }) {
       <h1>${title}</h1>
       <p class="iss-sum">${sum}</p>
       <p class="iss-sub">${sub}</p>
-      <button class="btn primary" data-act="issued-close">${button}</button>
+      <div class="iss-actions"><button class="btn primary" data-act="issued-close">${button}</button>${second ? h`<button class="btn" data-act="issued-second">${second.label}</button>` : ""}</div>
     </div>`.s;
   document.body.appendChild(el); document.body.classList.add("iss-open");
   const close = () => { if (!el.isConnected) return; el.classList.add("out"); document.body.classList.remove("iss-open"); setTimeout(() => el.remove(), 500); document.removeEventListener("keydown", onKey); };
   const onKey = (e) => { if (e.key === "Escape") close(); };
-  el.addEventListener("click", (e) => { if (e.target.closest("[data-act=issued-close]") || e.target === el) close(); });
+  el.addEventListener("click", (e) => {
+    if (e.target.closest("[data-act=issued-second]")) { close(); second?.onClick?.(); return; }
+    if (e.target.closest("[data-act=issued-close]")) { close(); onButton?.(); return; }
+    if (e.target === el) close();
+  });
   document.addEventListener("keydown", onKey);
   clearTimeout(showCelebrate._t); showCelebrate._t = setTimeout(close, auto);      // один таймер на все оверлеи: прошлый не закроет новый
 }
@@ -913,7 +917,12 @@ function showIssued(a) {
   showCelebrate({ label: od ? "Лимит открыт" : "Кредит выдан", title: od ? "Лимит открыт!" : "Кредит выдан!",
     sum: od ? h`Овердрафт ${amt} доступен на расчётном счёте — деньги списываются по мере использования` : h`${amt} уже на вашем расчётном счёте`,
     sub: a.contract?.first_payment ? h`Первый платёж ${rub(a.contract.first_payment.amount)} · ${dateOnly(a.contract.first_payment.date)}` : "График платежей и договор — в карточке кредита",
-    button: "Смотреть график платежей" });
+    button: "Смотреть график платежей", onButton: openSchedule, second: { label: "На главную", onClick: toHome } });
+}
+// раскрыть график платежей на странице заявки и прокрутить к нему
+function openSchedule() {
+  const d = document.getElementById("sched"); if (!d) return;
+  d.open = true; setTimeout(() => d.scrollIntoView({ behavior: "smooth", block: "start" }), 350);
 }
 function showPaid(r, paid) {
   const l = r.loan;
@@ -980,7 +989,7 @@ function scheduleTable(a) {
   const viz = h`<div class="sched-viz mt"><div class="row between wrapx small"><span><i class="sw p"></i>основной долг ${rub(princ)}</span><span><i class="sw i"></i>проценты ${rub(over)} · переплата ${Math.round(over / princ * 100)} %</span><span class="muted">всего ${rub(princ + over)}</span></div>
     <div class="sv-bars" role="img" aria-label="Структура каждого платежа: основной долг и проценты">${rows.map((r) => h`<div class="sv-col ${r.paid ? "paid" : ""}" title="№${r.n} · ${dateOnly(r.date)} · долг ${rub(r.principal)} · проценты ${rub(r.interest)}"><span class="i" style="height:${(r.interest / mx * 100).toFixed(1)}%"></span><span class="p" style="height:${(r.principal / mx * 100).toFixed(1)}%"></span></div>`)}</div>
     <div class="row between small muted"><span>${dateOnly(rows[0].date)}</span><span>доля процентов в платеже падает с ${Math.round(rows[0].interest / rows[0].payment * 100)} % до ${Math.round(rows[rows.length - 1].interest / rows[rows.length - 1].payment * 100)} %</span><span>${dateOnly(rows[rows.length - 1].date)}</span></div></div>`;
-  return h`<details class="mt" ${disb ? "open" : ""}><summary><b>${T("график платежей", "График платежей")}</b> <span class="muted small">· платежей: ${rows.length}${disb ? " · оплачено: " + rows.filter((r) => r.paid).length : ""}</span></summary>${viz}
+  return h`<details class="mt" id="sched" ${disb ? "open" : ""}><summary><b>${T("график платежей", "График платежей")}</b> <span class="muted small">· платежей: ${rows.length}${disb ? " · оплачено: " + rows.filter((r) => r.paid).length : ""}</span></summary>${viz}
     <div class="scroll mt"><table class="t sched"><thead><tr><th>№</th><th>Дата платежа</th><th class="right">${T("основной долг", "Основной долг")}</th><th class="right">${T("проценты", "Проценты")}</th><th class="right">Платёж</th><th class="right">${T("остаток долга", "Остаток долга")}</th>${disb ? h`<th class="center">Оплата</th>` : ""}</tr></thead><tbody>
     ${rows.map((r) => h`<tr class="${r.paid ? "paid" : ""}"><td>${r.n}</td><td>${dateOnly(r.date)}</td><td class="right num">${rub(r.principal)}</td><td class="right num">${rub(r.interest)}</td><td class="right num"><b>${rub(r.payment)}</b></td><td class="right num">${rub(r.balance)}</td>${disb ? h`<td class="center">${r.paid ? raw('<span class="tick" title="Оплачен">✓</span>') : ""}</td>` : ""}</tr>`)}
     </tbody><tfoot><tr><td colspan="2"><b>Итого</b></td><td class="right num"><b>${rub(sum("principal"))}</b></td><td class="right num"><b>${rub(sum("interest"))}</b></td><td class="right num"><b>${rub(sum("payment"))}</b></td><td></td>${disb ? h`<td></td>` : ""}</tr></tfoot></table></div>

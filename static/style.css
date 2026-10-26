@@ -727,3 +727,8 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 /* подтверждение внутри страницы (вместо window.confirm) */
 .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; background: var(--bad-soft); color: var(--ink); font-size: 14px; }
 .ask .ask-text { font-weight: 600; flex: 1 1 240px; } .ask .btn.danger { background: var(--bad); color: #fff; border-color: var(--bad); }
+
+/* оверлей выдачи: две кнопки — к графику платежей или на главную */
+.iss-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+#issued-overlay .iss-actions .btn { min-width: 180px; }
+#sched { scroll-margin-top: 88px; }   /* прокрутка к графику — с учётом липкой шапки */
