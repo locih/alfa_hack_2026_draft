@@ -626,7 +626,16 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #3f82d0 0%, #275b9b 55%, #163a66 100%); }
 /* «бумага»: светлая плитка на тёмной теме, чёрная — на светлой (как чёрные блоки alfabank.ru) */
 .ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #ffffff 0%, #ebebeb 60%, #d6d6da 100%); color: #0f0f10; } .ncard.paper span { opacity: .72; }
-:root:not([data-theme="dark"]) .ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #3a3a40 0%, #1a1a1d 60%, #111 100%); color: #fff; } :root:not([data-theme="dark"]) .ncard.paper span { opacity: .78; }
+/* светлая тема: пастель как на alfabank.ru (голубой, сиреневый, мятный, розовый, серый), тёмный текст; тёмная тема — насыщенные */
+:root:not([data-theme="dark"]) .ncard { color: #0f0f10; }
+:root:not([data-theme="dark"]) .ncard small { opacity: .62; } :root:not([data-theme="dark"]) .ncard span { opacity: .75; }
+:root:not([data-theme="dark"]) .ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #d3f1ff 0%, #b3e4fb 60%, #9fd9f6 100%); }
+:root:not([data-theme="dark"]) .ncard.violet { background: radial-gradient(120% 120% at 100% 0%, #efe4ff 0%, #dfcbff 60%, #d2b9ff 100%); }
+:root:not([data-theme="dark"]) .ncard.red { background: radial-gradient(120% 120% at 100% 0%, #ffe6e3 0%, #ffd3cf 60%, #ffc2bc 100%); }
+:root:not([data-theme="dark"]) .ncard.lime { background: radial-gradient(120% 120% at 100% 0%, #e0fbe9 0%, #c7f3d8 60%, #b4ecc9 100%); }
+:root:not([data-theme="dark"]) .ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #f7f7f8 0%, #ececee 60%, #e2e2e5 100%); }
+:root:not([data-theme="dark"]) .fcard.ok { background: #e4d4ff; color: #0f0f10; } :root:not([data-theme="dark"]) .fcard.ok .ftext { color: rgba(0,0,0,.66); }
+:root:not([data-theme="dark"]) .fcard.ok .btn { background: #0f0f10; color: #fff; border-color: #0f0f10; } :root:not([data-theme="dark"]) .fcard.ok .fx { background: rgba(0,0,0,.07); color: #0f0f10; }
 .ncard.red { background: radial-gradient(120% 120% at 100% 0%, #ff5a4a 0%, #b4140a 55%, #3a0a07 100%); }
 .ncard.lime { background: radial-gradient(120% 120% at 100% 0%, #d9ff6a 0%, #a9ee01 55%, #6f9e00 100%); color: #0f0f10; } .ncard.lime span { opacity: .78; } .ncard.lime small { opacity: .6; }
 .ncard.violet { background: radial-gradient(120% 120% at 100% 0%, #b56cff 0%, #9933ff 55%, #4a1a8f 100%); }
