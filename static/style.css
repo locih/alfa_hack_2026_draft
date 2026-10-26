@@ -29,11 +29,6 @@
   --black: #212124; --on-black: #fff; --accent-soft: #ffebeb; --ok: #0a9b40; --ok-soft: #dff8e5; --warn: #c96b00; --warn-soft: #ffefd9; --bad: #d72505; --bad-soft: #ffebeb; --info: #2c64d4; --info-soft: #e4f0ff; --violet-soft: #efecff; --violet-ink: #4a30c9;
   background: var(--card); color: var(--ink); }
 :root[data-theme="dark"] .prepay.island { padding: 16px 18px; border-radius: var(--radius-xs); margin-top: 16px; }
-:root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) { background: #fff; color: #0f0f10; }   /* белый остров: карточка ленты не сливается с тёмным фоном */
-:root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .ftext { color: rgba(0,0,0,.62); } :root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .fico.soft { background: #f0f0f2; color: #0f0f10; }
-:root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .fx { background: rgba(0,0,0,.06); color: #0f0f10; } :root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .btn.link { color: rgba(0,0,0,.65); }
-:root[data-theme="dark"] .fcard.pay { background: #fff; color: #0f0f10; } :root[data-theme="dark"] .fcard.pay .ftext { color: rgba(0,0,0,.62); } :root[data-theme="dark"] .fcard.pay .flack { color: #0f0f10; }
-:root[data-theme="dark"] .fcard.pay .fx { background: rgba(0,0,0,.06); color: #0f0f10; } :root[data-theme="dark"] .fcard.pay .btn.link { color: rgba(0,0,0,.65); }
 :root[data-theme="dark"] .login-form form { background: var(--card); }
 :root[data-theme="dark"] #issued-overlay { background: rgba(15,15,16,.94); }
 :root[data-theme="dark"] .chart-wrap.hovering .bar-g.on text { fill: #fff; }
@@ -623,22 +618,6 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .ncard { flex: 0 0 auto; width: 272px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 6px; min-height: 160px; padding: 18px 18px 16px; border-radius: var(--radius); color: #fff; text-decoration: none; position: relative; overflow: hidden; transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); animation: rise .9s var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms); }
 .ncard:hover { transform: translateY(-3px); text-decoration: none; box-shadow: 0 16px 30px -18px rgba(0,0,0,.5); }
 .ncard small { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; } .ncard b { font-size: 16px; line-height: 1.2; } .ncard span { font-size: 13px; opacity: .78; line-height: 1.4; } .ncard .go { margin-top: auto; font-style: normal; font-size: 13px; font-weight: 600; opacity: .9; }
-.ncard.blue { background: #2b63a8; }
-/* «бумага»: светлая плитка на тёмной теме, чёрная — на светлой (как чёрные блоки alfabank.ru) */
-.ncard.paper { background: #ebebeb; color: #0f0f10; } .ncard.paper span { opacity: .72; }
-/* светлая тема: пастель как на alfabank.ru (голубой, сиреневый, мятный, розовый, серый), тёмный текст; тёмная тема — насыщенные */
-:root:not([data-theme="dark"]) .ncard { color: #0f0f10; }
-:root:not([data-theme="dark"]) .ncard small { opacity: .62; } :root:not([data-theme="dark"]) .ncard span { opacity: .75; }
-:root:not([data-theme="dark"]) .ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #c6ecff 0%, #9fdbfa 60%, #86cff5 100%); }
-:root:not([data-theme="dark"]) .ncard.violet { background: radial-gradient(120% 120% at 100% 0%, #e8d8ff 0%, #d2b8ff 60%, #c3a3ff 100%); }
-:root:not([data-theme="dark"]) .ncard.red { background: radial-gradient(120% 120% at 100% 0%, #ffdcd8 0%, #ffc3bd 60%, #ffaea6 100%); }
-:root:not([data-theme="dark"]) .ncard.lime { background: radial-gradient(120% 120% at 100% 0%, #d4f8e1 0%, #b4eecb 60%, #9ce6b9 100%); }
-:root:not([data-theme="dark"]) .ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #f1f1f3 0%, #e3e3e7 60%, #d7d7dc 100%); }
-:root:not([data-theme="dark"]) .fcard.ok { background: #d8c2ff; color: #0f0f10; } :root:not([data-theme="dark"]) .fcard.ok .ftext { color: rgba(0,0,0,.66); }
-:root:not([data-theme="dark"]) .fcard.ok .btn { background: #0f0f10; color: #fff; border-color: #0f0f10; } :root:not([data-theme="dark"]) .fcard.ok .fx { background: rgba(0,0,0,.07); color: #0f0f10; }
-.ncard.red { background: #d8220f; }
-.ncard.lime { background: #a9ee01; color: #0f0f10; } .ncard.lime span { opacity: .78; } .ncard.lime small { opacity: .6; }
-.ncard.violet { background: #7a3ff2; }
 @media (max-width: 600px) { .ncard { width: 240px; } }
 .r-zero { stroke: var(--bad); stroke-width: 1; stroke-dasharray: 2 3; opacity: .8; } .r-axis { fill: var(--chart-b); font-size: 10px; }
 
@@ -722,3 +701,29 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 /* ключевая ставка: крупно в шапке кабинета, без плашки */
 .keyrate { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 2px 0; color: var(--ink); text-decoration: none; line-height: 1.1; flex: none; }   /* без плашки: чёрный текст на светлой, белый на тёмной */
 .keyrate:hover { text-decoration: none; opacity: .9; } .keyrate small { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; } .keyrate b { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+
+/* ---------- тона плиток ленты: один набор токенов для новостей (.ncard) и предложений (.fcard.t-*) ----------
+   тёмная тема — насыщенные плоские цвета, светлая — пастель как на alfabank.ru; в ленте максимум 4 плитки = 4 цвета без повторов */
+.ncard.violet, .fcard.t-violet { --t-bg: #7a3ff2; --t-ink: #fff; --t-sub: rgba(255,255,255,.8); --t-fx: rgba(255,255,255,.16); --t-btn: #fff; --t-btn-ink: #7a3ff2; }
+.ncard.paper,  .fcard.t-paper  { --t-bg: #ebebeb; --t-ink: #0f0f10; --t-sub: rgba(0,0,0,.62); --t-fx: rgba(0,0,0,.07); --t-btn: #ef3124; --t-btn-ink: #fff; }
+.ncard.red,    .fcard.t-red    { --t-bg: #d8220f; --t-ink: #fff; --t-sub: rgba(255,255,255,.85); --t-fx: rgba(255,255,255,.18); --t-btn: #fff; --t-btn-ink: #d8220f; }
+.ncard.lime,   .fcard.t-lime   { --t-bg: #a9ee01; --t-ink: #0f0f10; --t-sub: rgba(0,0,0,.66); --t-fx: rgba(0,0,0,.08); --t-btn: #0f0f10; --t-btn-ink: #fff; }
+.ncard.blue,   .fcard.t-blue   { --t-bg: #2b63a8; --t-ink: #fff; --t-sub: rgba(255,255,255,.8); --t-fx: rgba(255,255,255,.16); --t-btn: #fff; --t-btn-ink: #2b63a8; }
+:root:not([data-theme="dark"]) .ncard.violet, :root:not([data-theme="dark"]) .fcard.t-violet { --t-bg: #d2b8ff; --t-ink: #0f0f10; --t-sub: rgba(0,0,0,.66); --t-fx: rgba(0,0,0,.07); --t-btn: #0f0f10; --t-btn-ink: #fff; }
+:root:not([data-theme="dark"]) .ncard.paper,  :root:not([data-theme="dark"]) .fcard.t-paper  { --t-bg: #e3e3e7; --t-ink: #0f0f10; --t-sub: rgba(0,0,0,.62); --t-fx: rgba(0,0,0,.07); --t-btn: #ef3124; --t-btn-ink: #fff; }
+:root:not([data-theme="dark"]) .ncard.red,    :root:not([data-theme="dark"]) .fcard.t-red    { --t-bg: #ffc3bd; --t-ink: #0f0f10; --t-sub: rgba(0,0,0,.66); --t-fx: rgba(0,0,0,.07); --t-btn: #0f0f10; --t-btn-ink: #fff; }
+:root:not([data-theme="dark"]) .ncard.lime,   :root:not([data-theme="dark"]) .fcard.t-lime   { --t-bg: #b4eecb; --t-ink: #0f0f10; --t-sub: rgba(0,0,0,.66); --t-fx: rgba(0,0,0,.07); --t-btn: #0f0f10; --t-btn-ink: #fff; }
+:root:not([data-theme="dark"]) .ncard.blue,   :root:not([data-theme="dark"]) .fcard.t-blue   { --t-bg: #9fdbfa; --t-ink: #0f0f10; --t-sub: rgba(0,0,0,.66); --t-fx: rgba(0,0,0,.07); --t-btn: #0f0f10; --t-btn-ink: #fff; }
+.ncard { background: var(--t-bg); color: var(--t-ink); } .ncard small, .ncard span { color: var(--t-sub); opacity: 1; }
+.feed.foryou .fcard[class*=" t-"] { background: var(--t-bg); color: var(--t-ink); }
+.feed.foryou .fcard[class*=" t-"] .ftext, .feed.foryou .fcard[class*=" t-"] .fcat { color: var(--t-sub); opacity: 1; }
+.feed.foryou .fcard[class*=" t-"] .flack { color: var(--t-ink); }
+.feed.foryou .fcard[class*=" t-"] .fx, .feed.foryou .fcard[class*=" t-"] .fico { background: var(--t-fx); color: var(--t-ink); }
+.feed.foryou .fcard[class*=" t-"] .fx:hover { filter: brightness(.92); }
+.feed.foryou .fcard[class*=" t-"] .facts .btn { background: var(--t-btn); color: var(--t-btn-ink); border-color: var(--t-btn); font-weight: 700; }
+.feed.foryou .fcard[class*=" t-"] .facts .btn.link { background: transparent; border-color: transparent; color: var(--t-sub); font-weight: 600; }
+.feed.foryou .fcard.t-red.pay .fico { background: rgba(255,255,255,.22); }
+
+/* подтверждение внутри страницы (вместо window.confirm) */
+.ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; background: var(--bad-soft); color: var(--ink); font-size: 14px; }
+.ask .ask-text { font-weight: 600; flex: 1 1 240px; } .ask .btn.danger { background: var(--bad); color: #fff; border-color: var(--bad); }

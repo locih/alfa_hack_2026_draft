@@ -393,7 +393,7 @@ function feedBlock(prof, prod, active) {
   return cards.length ? h`<section class="feed" aria-label="Для вас"><div class="feed-track">${cards}</div></section>` : "";
 }
 // единая лента «Для вас»: напоминания и предложения + новости и сервисы банка, автопрокрутка маятником
-const FEED_MAX = 6, FEED_OFFERS_MAX = 2;
+const FEED_MAX = 4, FEED_OFFERS_MAX = 2;   // четыре плитки — четыре цвета, без повторов
 function industryOf(okved) {
   const code = parseInt(String(okved || "").slice(0, 2), 10);
   if (code === 62 || code === 63) return "it"; if (code === 56) return "catering"; if (code >= 41 && code <= 43) return "construction";
@@ -420,10 +420,13 @@ function forYouBlock(prof, prod, active) {
   // уведомления (платёж, действие) — всегда; предложений (предодобрено, льготная) — не больше двух
   const isOffer = (card) => /class="fcard(?: ok)?" data-key="(pre-|pref)/.test(card.s);
   const notices = all.filter((cd) => !isOffer(cd)), offers = all.filter(isOffer).slice(0, FEED_OFFERS_MAX);
-  const cards = [...notices, ...offers].slice(0, FEED_MAX);
+  const own = [...notices, ...offers].slice(0, FEED_MAX);
   const tags = businessContext(prof, window.__client);
-  const picked = pickNews(tags, Math.max(0, FEED_MAX - cards.length));
-  const news = picked.map((n, i) => h`<a class="ncard ${toneAt(i + cards.length)}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i + cards.length, 6)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`);
+  const picked = pickNews(tags, Math.max(0, FEED_MAX - own.length));
+  // цвет каждой плитки по позиции: срочный платёж всегда красный, остальные — свободные цвета без повторов и без соседей одного цвета
+  const tones = assignTones([...own.map((cd) => (/class="fcard pay (?:soon|late)/.test(cd.s) ? "red" : null)), ...picked.map(() => null)]);
+  const cards = own.map((cd, i) => raw(cd.s.replace('class="fcard', `class="fcard t-${tones[i]}`)));
+  const news = picked.map((n, i) => h`<a class="ncard ${tones[i + cards.length]}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i + cards.length, 6)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`);
   const why = [...tags].filter((t) => t !== "any" && t !== "retail").map((t) => ({ it: "ИТ", catering: "общепит", construction: "строительство", trade: "торговля", transport: "транспорт", production: "производство", other: "ваша отрасль", young: "молодой бизнес", loan: "действующий кредит", msp: "реестр МСП", gap: "риск кассового разрыва" }[t])).join(", ");
   return h`<section class="feed foryou mb" aria-label="Для вас"><div class="row between wrapx feed-head"><div><h2 style="margin:0">Для вас</h2><span class="muted small">подобрано по профилю: ${why} · ${cards.length + news.length} из ${FEED_MAX}</span></div>
       <div class="news-nav"><button class="btn sm" data-act="news-prev" aria-label="Назад">←</button><button class="btn sm" data-act="news-next" aria-label="Вперёд">→</button></div></div>
@@ -443,8 +446,19 @@ function glide(t, dx, ms = 800) {
 }
 
 // цвета плиток ленты чередуются по позиции (палитра alfabank.ru), соседние никогда не совпадают
-const TONE_CYCLE = ["violet", "paper", "red", "lime", "blue"];
+const TONE_CYCLE = ["violet", "paper", "red", "lime"];
 const toneAt = (i) => TONE_CYCLE[((i % TONE_CYCLE.length) + TONE_CYCLE.length) % TONE_CYCLE.length];
+// fixed[i] — заданный цвет (или null): свободным позициям даём первый цвет, который ещё не использован и не совпадает с соседом слева
+function assignTones(fixed) {
+  const out = [], used = new Set();
+  fixed.forEach((f, i) => {
+    const prev = out[i - 1];
+    let t = f && f !== prev ? f : null;
+    if (!t) t = TONE_CYCLE.find((c) => !used.has(c) && c !== prev) || TONE_CYCLE.find((c) => c !== prev) || TONE_CYCLE[0];
+    used.add(t); out.push(t);
+  });
+  return out;
+}
 
 function initCarousels() {
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -1232,8 +1246,8 @@ const act = {
     } catch (e) { toast(e.message, true); el.disabled = false; }
   },
   "accept": () => call("/accept", "Предложение принято"),
-  "decline-offer": () => confirm("Отказаться от предложения? Заявка будет закрыта.") && call("/decline-offer", "Вы отказались от предложения"),
-  "withdraw": () => confirm("Отозвать заявку?") && call("/withdraw", "Заявка отозвана"),
+  "decline-offer": (el) => askInline(el, "Отказаться от предложения? Заявка будет закрыта.", "Да, отказаться", () => call("/decline-offer", "Вы отказались от предложения")),
+  "withdraw": (el) => askInline(el, "Отозвать заявку? Данные сохранятся, можно будет подать новую.", "Да, отозвать", () => call("/withdraw", "Заявка отозвана")),
   "docs": () => call("/documents", "Выписка подключена, проверяем повторно", { note: $("#note")?.value }),
   "sign": () => call("/sign", "Договор подписан", { code: $("#code")?.value || "" }),
   "csv": () => {
@@ -1263,6 +1277,19 @@ const act = {
     try { await api(`/bank/applications/${d.id}/decision`, { body }); toast("Решение сохранено"); bankSig = ""; viewBankApp(d.id); } catch (e) { toast(e.message, true); }
   },
 };
+// подтверждение внутри страницы вместо window.confirm: встроенные браузеры и вебвью гасят нативные диалоги, и кнопка «не работает»
+function askInline(btn, text, yesLabel, onYes) {
+  if (!btn || btn.closest(".ask")) return;
+  const box = document.createElement("span"); box.className = "ask";
+  box.innerHTML = `<span class="ask-text">${esc(text)}</span><button class="btn sm danger" type="button">${esc(yesLabel)}</button><button class="btn sm" type="button">Нет</button>`;
+  const [yes, no] = box.querySelectorAll("button");
+  const restore = () => { box.replaceWith(btn); btn.focus(); };
+  yes.addEventListener("click", (ev) => { ev.stopPropagation(); yes.disabled = true; onYes(); });
+  no.addEventListener("click", (ev) => { ev.stopPropagation(); restore(); });
+  box.addEventListener("keydown", (ev) => { if (ev.key === "Escape") restore(); });
+  btn.replaceWith(box); yes.focus();
+}
+
 async function call(path, okMsg, body) {
   const id = window.__app.id;
   try { await api(`/client/applications/${id}${path}`, { method: "POST", body: body || undefined }); toast(okMsg); lastSig = ""; await viewApp(id); } catch (e) { toast(e.message, true); }
