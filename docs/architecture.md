@@ -67,15 +67,17 @@ erDiagram
     USERS ||--o{ SESSIONS : has
     APPLICATIONS ||--o{ EVENTS : logs
     APPLICATIONS ||--o| IDEMPOTENCY : dedups
+    USERS ||--o| ACCOUNTS : "client_id"
     USERS { text login PK  text role  text client_id }
     SESSIONS { text token PK  text login FK  text expires }
     APPLICATIONS {
-      text id PK  int seq  text client_id  text product  int amount  int term  text collateral
+      text id PK  int seq  text client_id  text product  int amount  int term  text collateral  text purpose  text purpose_text
       text status  int version  json consents  json enrichment  json decision  json offer  json contract  json doc_request
-      int statement_uploaded  text sign_code
+      int statement_uploaded  text sign_code  text final_reason
     }
     EVENTS { int id PK  text app_id FK  text ts  text actor  text kind  text vis  text from_status  text to_status  text message }
     IDEMPOTENCY { text key PK  text login PK  text app_id FK }
+    ACCOUNTS { text client_id PK  int balance }
     SETTINGS { text name PK  json value }
 ```
 
@@ -95,12 +97,12 @@ erDiagram
 | Деградация при недоступности внешнего источника | `mocks.collect`, `service.step_verify` |
 | Версии карты и политики в каждом решении | `decision.scorecard_version`, `policy_version` |
 | Маскирование ИНН в списках банка, нейтральные причины отказа | `service.mask_inn`, `reasons.py` |
+| Сбой автоматического шага не оставляет заявку зависшей: она уходит аналитику, в журнале банка остаётся запись | `service.run_pipeline`, `_degrade` |
+| Заявки в автоматических статусах возобновляются после перезапуска процесса | `service.resume_pending`, `main.lifespan` |
+| Ограничение неудачных входов (8 за 5 минут на логин), лимиты длины текстовых полей, границы суммы и срока | `main.login`, модели запросов, `service.validate_request` |
 | Probes `/api/health/live` и `/ready`, healthcheck контейнера, не-root пользователь | `Dockerfile` |
 
 ## ML-слой (опционально)
 
 `app/pd_provider.py` отдаёт PD из обученной LightGBM-модели (`MODEL_DIR`) или, если её нет, из скоркарты; `app/cascade.py` строит решение по каскаду продуктов (автоодобрение / серая зона / пропуск), оставляя жёсткие стоп-правила и допуск продукта перед моделью. Обучение и предикт — пакет `ml/` (`features`, `train`, `predict`, `synth`). Подробно: [ml.md](ml.md).
 
-## Что заменить при выходе в прод
-
-PostgreSQL вместо SQLite; очередь/оркестратор (Temporal/Camunda) вместо фонового потока; реальные адаптеры БКИ/ЕГРЮЛ/ФНС с теми же интерфейсами; УКЭП/Госключ вместо кода; SSO банка вместо демо-входа; хранение секретов и аудит-лог в защищённом контуре; калибровка и валидация скоринговой карты на данных банка.

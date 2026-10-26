@@ -2,12 +2,12 @@
 
 TRANSITIONS = {
     "DRAFT": {"VERIFICATION", "WITHDRAWN"},
-    "VERIFICATION": {"DECISIONING", "AWAITING_DOCS", "MANUAL_REVIEW", "DECLINED", "WITHDRAWN"},
-    "AWAITING_DOCS": {"VERIFICATION", "EXPIRED", "WITHDRAWN"},
-    "DECISIONING": {"OFFER_READY", "MANUAL_REVIEW", "AWAITING_DOCS", "DECLINED", "WITHDRAWN"},
+    "VERIFICATION": {"DECISIONING", "MANUAL_REVIEW", "DECLINED", "WITHDRAWN"},
+    "AWAITING_DOCS": {"VERIFICATION", "WITHDRAWN"},
+    "DECISIONING": {"OFFER_READY", "MANUAL_REVIEW", "DECLINED", "WITHDRAWN"},
     "MANUAL_REVIEW": {"OFFER_READY", "AWAITING_DOCS", "DECLINED", "WITHDRAWN"},
     "OFFER_READY": {"AWAITING_SIGNATURE", "EXPIRED", "WITHDRAWN"},
-    "AWAITING_SIGNATURE": {"DISBURSING", "EXPIRED", "WITHDRAWN"},
+    "AWAITING_SIGNATURE": {"DISBURSING", "WITHDRAWN"},
     "DISBURSING": {"DISBURSED"},
     "DISBURSED": set(), "DECLINED": set(), "WITHDRAWN": set(), "EXPIRED": set(),
 }
@@ -36,11 +36,11 @@ CLIENT_VIEW = {
 CLIENT_HINTS = {
     "DRAFT": ("Отправим заявку на рассмотрение", "Проверить данные и отправить", "—"),
     "VERIFICATION": ("Подберём условия и покажем решение", "Ничего — страницу можно не закрывать", "обычно до минуты"),
-    "AWAITING_DOCS": ("После документов продолжим рассмотрение", "Подключить выписку из другого банка", "после получения документов; ждём до 5 рабочих дней"),
+    "AWAITING_DOCS": ("После документов продолжим рассмотрение", "Подключить выписку из другого банка", "после получения документов"),
     "DECISIONING": ("Покажем предложение", "Ничего", "обычно до минуты"),
     "MANUAL_REVIEW": ("Специалист примет решение и сообщит здесь", "Ничего. При желании можно приложить документы", "в течение рабочего дня"),
     "OFFER_READY": ("После принятия подготовим договор", "Принять предложение или отказаться", "предложение действует 14 дней"),
-    "AWAITING_SIGNATURE": ("После подписи деньги поступят на расчётный счёт", "Ввести код подтверждения", "подписать нужно в течение 5 рабочих дней"),
+    "AWAITING_SIGNATURE": ("После подписи деньги поступят на расчётный счёт", "Ввести код подтверждения", "сразу после подтверждения кода"),
     "DISBURSING": ("Кредит поступит на расчётный счёт", "Ничего", "обычно до 2 минут"),
     "DISBURSED": ("Платежи — по графику ниже", "Вносить платежи по графику", "—"),
     "DECLINED": ("Можно изменить параметры и подать новую заявку", "—", "—"),

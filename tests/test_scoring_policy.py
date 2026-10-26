@@ -102,7 +102,7 @@ def test_state_machine_is_closed():
         assert nxt <= set(TRANSITIONS)
     assert TERMINAL == {"DISBURSED", "DECLINED", "WITHDRAWN", "EXPIRED"}
     assert len(TRANSITIONS) == 12
-    assert sum(len(v) for v in TRANSITIONS.values()) == 26
+    assert sum(len(v) for v in TRANSITIONS.values()) == 22
 
 
 def test_policy_catalog_has_four_products_two_mechanics():

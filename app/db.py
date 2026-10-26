@@ -1,4 +1,4 @@
-"""SQLite: WAL, внешние ключи, транзакции BEGIN IMMEDIATE. В проде — PostgreSQL (схема совместима)."""
+"""SQLite: WAL, внешние ключи, транзакции BEGIN IMMEDIATE."""
 import hashlib
 import json
 import os

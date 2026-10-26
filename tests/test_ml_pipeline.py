@@ -125,7 +125,7 @@ def test_meta_without_version_means_model_unavailable_not_a_crash(trained, tmp_p
     meta.pop("model_version")
     (bad / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
     with pytest.raises(ModelUnavailable):
-        PDModel.load(str(bad))                                                  # раньше: KeyError мимо try
+        PDModel.load(str(bad))   # исключение обёрнуто в ModelUnavailable
     monkeypatch.setenv("MODEL_DIR", str(bad))
     from ml.predict import load_default
     assert load_default() is None

@@ -1,12 +1,12 @@
 # Тестовые сценарии
 
-Все сценарии воспроизводятся в интерфейсе (учётки в README, пароль `demo123`) и автоматически: `pytest -q` (файлы `tests/test_e2e_api.py`, `test_scoring_policy.py`, `test_cascade.py`, `test_ml_pipeline.py`). Ожидаемые значения — при ключевой ставке 14 %.
+Все сценарии воспроизводятся в интерфейсе (учётки в README, пароль `demo123`) и автоматически: `pytest -q` (файлы `tests/test_e2e_api.py`, `test_scoring_policy.py`, `test_cascade.py`, `test_regressions.py`, `test_ml_pipeline.py`). Ожидаемые значения — при ключевой ставке 14 %.
 
 | № | Сценарий | Шаги | Ожидаемый результат | Автотест |
 |---|---|---|---|---|
 | 1 | Счастливый путь | `sever`: оборотный 3 млн ₽ / 24 мес. → принять → код → подписать | OFFER_READY «как просили», 18,0 %, платёж 149 772 ₽ → DISBURSED, договор `КД-2026-…`, график из 24 платежей, остаток 0 | `test_client_a_happy_path_to_disbursement` |
 | 2 | Встречное предложение | `lesnoy`: оборотный 3 млн ₽ / 12 мес. | «другие условия»: 3 млн ₽ / 24 мес., 19,0 %, платёж 151 226 ₽ (на 12 мес. платёж 275 тыс. ₽ выше максимума 156 923 ₽) | `test_client_b_counter_offer_longer_term` |
-| 3 | Сбой БКИ → ручной разбор | `gromov`: оборотный 400 тыс. ₽ / 12 мес. | MANUAL_REVIEW; аналитик запрашивает документы → клиент подключает выписку → OFFER_READY, грейд C, 62 балла, 20,5 %, платёж 37 150 ₽ | `test_client_c_degradation_…` |
+| 3 | Сбой БКИ → ручной разбор | `gromov`: оборотный 400 тыс. ₽ / 12 мес. | MANUAL_REVIEW; аналитик запрашивает документы → клиент подключает выписку → OFFER_READY, грейд C, 62 балла, 20,5 %, платёж 37 150 ₽ | `test_client_c_degradation_to_manual_review_then_docs_then_analyst` |
 | 4 | Решение аналитика | аналитик одобряет / отказывает | одобрение → OFFER_READY (`analyst_approved`); отказ без причин → 422; с причиной → DECLINED | `test_client_c_analyst_approval_and_decline_paths` |
 | 5 | Отказ по стоп-правилу | `stroy`: любая заявка | DECLINED, причина R07 (налоги), скоринг не считается, у аналитика виден H06 | `test_client_d_declined_with_stop_rule` |
 | 6 | Сбой БКИ для всех | `admin`: БКИ «Сбой» → заявка `sever` | MANUAL_REVIEW, в журнале банка «попытка 3 из 3» | `test_bureau_outage_mode_forces_manual_review` |

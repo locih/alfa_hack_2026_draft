@@ -1,4 +1,4 @@
-"""Регрессионные тесты по замечаниям код-ревью (цикл 1): каждый тест воспроизводит найденный баг."""
+"""Регрессионные тесты: каждый воспроизводит ранее найденный дефект и проверяет, что он не вернулся."""
 import json
 
 import pytest
@@ -32,13 +32,13 @@ def test_legacy_contract_without_payment_fields_can_be_paid(api):
             ct.pop(k)
         c.execute("UPDATE applications SET contract=? WHERE id=?", (json.dumps(ct), app_id))
     dates = [r["date"] for r in get(api, h, app_id)["schedule"]]
-    assert api.post(f"/api/client/applications/{app_id}/pay", headers=h).status_code == 200    # раньше: KeyError → 500
+    assert api.post(f"/api/client/applications/{app_id}/pay", headers=h).status_code == 200
     a = get(api, h, app_id)
     assert a["loan"]["paid_count"] == 1 and [r["date"] for r in a["schedule"]] == dates          # даты привязаны к дате договора
 
 
 @pytest.mark.parametrize("body,code", [
-    ({"product": "working", "amount": 1_000_000, "term": 1_000_000_000}, 422),     # Field(le=600) — раньше строился график на 10^9 строк
+    ({"product": "working", "amount": 1_000_000, "term": 1_000_000_000}, 422),     # срок ограничен: иначе строился бы график на миллиарды строк
     ({"product": "working", "amount": 1_000_000, "term": 120}, 422),               # вне границ продукта
     ({"product": "working", "amount": 10, "term": 12}, 422),
     ({"product": "working", "amount": 1_000_000, "term": 12, "collateral": "yacht"}, 422),
@@ -60,7 +60,7 @@ def test_pipeline_crash_degrades_to_manual_review_with_bank_log(api, monkeypatch
     monkeypatch.setattr(pol, "evaluate", boom)
     h, hb = login(api, "sever"), login(api, "analyst")
     app_id = submit(api, h)
-    assert get(api, h, app_id)["status"]["code"] == "MANUAL_REVIEW"                       # раньше: вечное «Проверяем данные»
+    assert get(api, h, app_id)["status"]["code"] == "MANUAL_REVIEW"   # сбой шага не оставляет заявку в «Проверяем данные»
     bank = api.get(f"/api/bank/applications/{app_id}", headers=hb).json()
     assert any("Сбой автоматической обработки" in e["message"] and e["vis"] == "bank" for e in bank["events"])
     assert not any("Сбой" in e["message"] for e in get(api, h, app_id)["events"])           # клиенту детали сбоя не показываем
@@ -91,7 +91,7 @@ def test_wrong_sign_code_attempt_is_persisted_and_expired_offer_is_reported(api)
     app_id = submit(api, h)
     api.post(f"/api/client/applications/{app_id}/accept", headers=h)
     assert api.post(f"/api/client/applications/{app_id}/sign", headers=h, json={"code": "000000"}).status_code == 422
-    assert any(e["message"] == "Неверный код подтверждения" for e in get(api, h, app_id)["events"])   # раньше откатывалось вместе с транзакцией
+    assert any(e["message"] == "Неверный код подтверждения" for e in get(api, h, app_id)["events"])   # запись о попытке сохраняется вместе с ответом об ошибке
     # просроченная оферта: ошибка клиенту И переход в EXPIRED сохранён
     h2 = login(api, "lesnoy")
     app2 = submit(api, h2, term=12)
@@ -150,7 +150,7 @@ def test_pdo_scale_has_one_source_of_truth():
 
 
 
-# ---------- цикл 2 ----------
+# ---------- рекомендации аналитику, чтение счёта, списки заявок ----------
 
 def test_downsell_recommendation_carries_product_title_for_the_analyst(api, monkeypatch):
     from test_cascade import FakePD
@@ -168,7 +168,7 @@ def test_pipeline_failure_does_not_claim_that_bureau_data_was_received(api, monk
     monkeypatch.setattr(pol, "evaluate", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("сбой")))
     app_id = submit(api, h)
     dec = api.get(f"/api/bank/applications/{app_id}", headers=hadm).json()["decision"]
-    assert dec["outcome"] == "manual" and "bureau_ok" not in dec                      # раньше принудительно bureau_ok=True
+    assert dec["outcome"] == "manual" and "bureau_ok" not in dec
 
 
 def test_account_read_does_not_take_a_write_lock_once_row_exists(api, monkeypatch):
@@ -209,7 +209,7 @@ def test_failed_begin_does_not_mask_the_original_error(monkeypatch):
             pass
 
 
-# ---------- цикл 3 ----------
+# ---------- ограничения ввода и входа, устойчивость расчётов ----------
 
 def test_text_inputs_are_size_limited(api):
     h, hb = login(api, "sever"), login(api, "analyst")
@@ -257,9 +257,14 @@ def test_bureau_retries_use_exponential_backoff_with_jitter(monkeypatch):
     from app import mocks
     sleeps = []
     monkeypatch.setattr(mocks.time, "sleep", sleeps.append)
+    monkeypatch.setattr(mocks.random, "random", lambda: 0.5)                                # множитель джиттера = 1,0
     enr, log = mocks.collect(mocks.get_client("C-A"), False, "down", retries=2, backoff=0.2)
-    assert enr["bureau"]["status"] == "UNAVAILABLE" and len(sleeps) == 2                    # между тремя попытками две паузы
-    assert 0.1 <= sleeps[0] <= 0.3 and 0.2 <= sleeps[1] <= 0.6 and sleeps[1] > sleeps[0] * 0.9
+    assert enr["bureau"]["status"] == "UNAVAILABLE" and sleeps == [0.2, 0.4]                # между тремя попытками две паузы, вторая вдвое длиннее
+    for r, lo, hi in ((0.0, 0.1, 0.1), (1.0, 0.3, 0.3)):                                    # границы джиттера: от 0,5× до 1,5× базовой паузы
+        sleeps.clear()
+        monkeypatch.setattr(mocks.random, "random", lambda r=r: r)
+        mocks.collect(mocks.get_client("C-A"), False, "down", retries=1, backoff=0.2)
+        assert sleeps == [pytest.approx(lo)]
     sleeps.clear()
     mocks.collect(mocks.get_client("C-A"), False, "down", retries=2)                          # backoff=0 → без пауз (тесты и режим STEP_DELAY_SEC=0)
     assert sleeps == []
