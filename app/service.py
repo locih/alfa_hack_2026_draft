@@ -487,7 +487,7 @@ COLLATERAL_HINTS = {
 def collateral_options(client_id: str | None, allowed: list[str]) -> list[dict]:
     """Названия обеспечения зависят от формы бизнеса: у ИП нет «собственников», поэтому — поручительство третьего лица."""
     legal = mocks.get_client(client_id)["legal_form"] if client_id else "ООО"
-    labels = dict(COLLATERAL_LABELS, guarantor="Поручительство собственников бизнеса" if legal == "ООО" else "Поручительство третьего лица")
+    labels = dict(COLLATERAL_LABELS, guarantor="Поручительство бенефициарного владельца бизнеса" if legal == "ООО" else "Поручительство третьего лица")
     return [{"id": c, "label": labels[c], "hint": COLLATERAL_HINTS[c]} for c in allowed]
 
 

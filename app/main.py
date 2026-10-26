@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, db, mocks, pd_provider, scoring, service
+from . import config, db, mocks, pd_provider, scoring, service, smart
 from . import policy as pol
 from .config import policy
 from .service import ServiceError
@@ -204,6 +204,23 @@ def profile(u: dict = Depends(client_only)):
         "loans": [x for x in (service.loan_summary(db.row_to_app(r)) for r in _disbursed_rows(u["client_id"])) if x],
         "preapproval": [{k: v for k, v in x.items() if k != "grade"} for x in pol.preapproval(cl, enr, st["key_rate"])],   # внутренний грейд клиенту не показываем
     }
+
+
+@app.get("/api/client/forecast", tags=["client"], summary="Финансовый радар: прогноз свободного остатка на 90 дней, кассовый разрыв и предложение из лимита")
+def client_forecast(scenario: float = 0.0, u: dict = Depends(client_only)):
+    cl, enr, st = service.client_enrichment(u)
+    p = scoring.build_profile(cl, enr)
+    scheds = [s for s in (service._schedule(db.row_to_app(r)) for r in _disbursed_rows(u["client_id"])) if s]
+    return smart.forecast(p, service.account_view(u["client_id"])["balance"], scheds, pol.preapproval(cl, enr, st["key_rate"]),
+                          scenario=max(-0.9, min(float(scenario), 1.0)))
+
+
+@app.get("/api/client/limit", tags=["client"], summary="Умный лимит: единый кредитный лимит клиента, использование и что его поднимет")
+def client_limit(u: dict = Depends(client_only)):
+    cl, enr, st = service.client_enrichment(u)
+    p = scoring.build_profile(cl, enr)
+    loans = [x for x in (service.loan_summary(db.row_to_app(r)) for r in _disbursed_rows(u["client_id"])) if x]
+    return smart.limit(p, st["key_rate"], loans, pol.preapproval(cl, enr, st["key_rate"]))
 
 
 def _disbursed_rows(client_id: str):

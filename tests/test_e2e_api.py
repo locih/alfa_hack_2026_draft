@@ -177,8 +177,8 @@ def test_static_assets_are_revalidated_not_cached(api):
 def test_collateral_options_are_named_by_legal_form(api):
     ooo = {o["id"]: o["label"] for o in api.get("/api/products", headers=login(api, "sever")).json()["products"][0]["collateral_options"]}
     ip = {o["id"]: o["label"] for o in api.get("/api/products", headers=login(api, "gromov")).json()["products"][0]["collateral_options"]}
-    assert ooo["guarantor"] == "Поручительство собственников бизнеса" and ip["guarantor"] == "Поручительство третьего лица"
-    assert ooo["none"] == "Без обеспечения" and "владельц" not in str(ooo) + str(ip)
+    assert ooo["guarantor"] == "Поручительство бенефициарного владельца бизнеса" and ip["guarantor"] == "Поручительство третьего лица"
+    assert ooo["none"] == "Без обеспечения" and "владельц" not in str(ip)   # у ИП нет бенефициарного владельца — поручитель третье лицо
 
 
 def test_quote_shows_how_much_collateral_lowers_the_rate(api):
