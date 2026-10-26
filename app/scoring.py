@@ -41,7 +41,7 @@ def build_profile(client: dict, enrichment: dict) -> dict:
         "tax_debt": fn["tax_debt"], "tax_debt_days": fn["tax_debt_days"], "courts_ratio": fn["courts_ratio"],
         "sanctions": fn["sanctions"], "blocked": fn["blocked"],
         "msp_registry": fn["msp_registry"], "priority_industry": fn["priority_industry"],
-        "bureau": enrichment["bureau"]["data"], "bureau_ok": enrichment["bureau"]["status"] == "OK",
+        "client_id": client["id"], "bureau": enrichment["bureau"]["data"], "bureau_ok": enrichment["bureau"]["status"] == "OK",
     }
     p.update(metrics(p["receipts"]))
     return p

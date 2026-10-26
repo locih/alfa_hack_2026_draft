@@ -6,4 +6,3 @@ docs
 data
 *.md
 .env
-models

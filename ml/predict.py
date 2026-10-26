@@ -73,9 +73,16 @@ def load_default() -> "PDModel | None":
     if not (Path(path) / "meta.json").exists():
         return None
     try:
+        meta = json.loads((Path(path) / "meta.json").read_text(encoding="utf-8"))
+        if meta.get("kind") == "lookup":                         # модель-заглушка без LightGBM: ml/stub.py
+            from .stub import LookupPDModel
+            return LookupPDModel.load(path)
         return PDModel.load(path)
     except ModelUnavailable as e:
         print(f"[ml] модель не загружена, используется скоркарта: {e}")
+        return None
+    except Exception as e:                                       # битый meta.json / lookup.json
+        print(f"[ml] модель не загружена, используется скоркарта: {type(e).__name__}: {e}")
         return None
 
 

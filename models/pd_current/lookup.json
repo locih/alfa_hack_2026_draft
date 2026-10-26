@@ -1,0 +1,19 @@
+{
+ "C-A": {
+  "bureau=1;statement=bank": 0.010335490027799108,
+  "bureau=0;statement=bank": 0.017065653241037346
+ },
+ "C-B": {
+  "bureau=1;statement=other": 0.02682117023336966,
+  "bureau=0;statement=other": 0.03209178766033833
+ },
+ "C-C": {
+  "bureau=0;statement=none": 0.07078056344024301,
+  "bureau=1;statement=other": 0.04578822796883172,
+  "bureau=0;statement=other": 0.0621878558555099
+ },
+ "C-D": {
+  "bureau=1;statement=bank": 0.029341929700465057,
+  "bureau=0;statement=bank": 0.0419155829049111
+ }
+}

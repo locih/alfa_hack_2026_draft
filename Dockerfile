@@ -16,6 +16,7 @@ COPY app app
 COPY ml ml
 COPY config config
 COPY static static
+COPY models /models
 
 RUN useradd --system --uid 10001 app && mkdir -p /data /models && chown app /data
 USER app

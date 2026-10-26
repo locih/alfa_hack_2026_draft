@@ -9,6 +9,7 @@ from functools import lru_cache
 
 from ml import features as F
 from ml.predict import load_default
+from ml.stub import variant as stub_variant
 
 from . import scoring
 from .config import policy
@@ -46,6 +47,7 @@ class PDProvider:
         feats = F.build(profile, product=product, kind=pc["products"][product]["kind"], amount=amount, term=term,
                         collateral=collateral, legal_form=legal_form, ncf_margin=pc["industry_margin"][profile["industry"]])
         if self.model:
+            feats = feats | {"client_id": profile["client_id"], "data_variant": stub_variant(profile)}     # ключи для модели-заглушки; обычная модель их игнорирует
             return PDResult(self.model.predict_pd(feats), "ml", self.model.version, None, feats,
                             lazy_contributions=lambda: self.model.explain(feats, top=8))
         return PDResult(scoring.pd_fraction(scoring.score(profile)["total"]), "scorecard", "scorecard-" + pc["version"], None, feats)

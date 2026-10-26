@@ -180,7 +180,8 @@ def test_unknown_category_encodes_as_missing():
 
 # ---------- через API: режим решения переключается в пульте ----------
 
-def test_api_ml_cascade_mode_end_to_end(api):
+def test_api_ml_cascade_mode_end_to_end(api, monkeypatch, tmp_path):
+    monkeypatch.setenv("MODEL_DIR", str(tmp_path / "no_model"))      # тест запасного режима не зависит от models/
     pd_provider.reset_provider()
     hadm, h = login(api, "admin"), login(api, "lesnoy")
     s = api.post("/api/admin/settings", headers=hadm, json={"decision_mode": "ml_cascade"}).json()

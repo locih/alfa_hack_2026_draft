@@ -1071,7 +1071,7 @@ async function viewBank() {
         <div class="field"><label for="bm">БКИ</label><select id="bm"><option value="ok" ${settings.bureau_mode === "ok" ? "selected" : ""}>Работает</option><option value="down" ${settings.bureau_mode === "down" ? "selected" : ""}>Сбой (таймаут)</option></select></div>
         <div class="field"><label for="sd">Пауза между этапами, с</label><input id="sd" type="number" step="0.2" min="0" max="10" value="${settings.step_delay}"></div>
         <div class="field"><label for="dm">Режим решения</label><select id="dm"><option value="rules" ${settings.decision_mode === "rules" ? "selected" : ""}>Правила: скоркарта и политика</option><option value="ml_cascade" ${settings.decision_mode === "ml_cascade" ? "selected" : ""}>PD-модель и каскад по продуктам</option></select></div></div>
-      <p class="small muted">Источник PD для каскада: <b>${settings.ml.source === "ml" ? "ML-модель " + settings.ml.version : "скоркарта (обученной модели нет — запасной режим)"}</b></p>
+      <p class="small muted">Источник PD для каскада: <b>${settings.ml.source === "ml" ? (settings.ml.version.startsWith("stub") ? "модель-заглушка (PD скоркарты по клиенту)" : "ML-модель " + settings.ml.version) : "скоркарта (запасной режим)"}</b></p>
       <button class="btn primary sm" data-act="save-settings">Применить</button> 
       <button class="btn danger sm" data-act="reset">Сбросить демо-данные</button></details>` : ""}
     <div class="ftabs mb">${[["all", "Все"], ["manual", "Ручной разбор"], ["client", "Ждём клиента"], ["bank", "В работе у банка"], ["done", "Завершённые"]].map(([k, t]) => {
@@ -1107,7 +1107,7 @@ const FEAT = { age_months: "возраст бизнеса", tenure_months: "ст
 function mlCard(dec) {
   const ml = dec.ml, src = ml.source === "ml";
   return h`<div class="card mt"><div class="row between wrapx"><h2>PD-модель и каскад по продуктам</h2>
-      <span class="chip ${src ? "info" : "warn"}">${src ? "ML-модель " + ml.version : "запасной режим: PD по скоркарте"}</span></div>
+      <span class="chip ${src ? "info" : "warn"}">${src ? (ml.version.startsWith("stub") ? "модель-заглушка: PD скоркарты" : "ML-модель " + ml.version) : "запасной режим: PD по скоркарте"}</span></div>
     <p class="muted small">Для каждого продукта PD считается для конкретного предложения (сумма, срок, обеспечение). ≤ порога «авто» — автоодобрение; ≥ порога «пропуск» — продукт пропускается; между ними серая зона: ${ml.grey_zone_policy === "refer" ? "сразу живому верификатору" : "сначала более безопасные продукты каскада, затем верификатор"}.</p>
     <div class="scroll"><table class="t"><thead><tr><th>Продукт</th><th class="right">PD</th><th>Грейд</th><th class="right">Пороги, %</th><th>Зона</th><th>Предложение</th></tr></thead><tbody>
     ${ml.trace.map((t) => h`<tr><td>${t.title}</td><td class="right num">${t.pd == null ? "—" : t.pd.toFixed(1) + " %"}</td>

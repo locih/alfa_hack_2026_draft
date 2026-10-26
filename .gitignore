@@ -7,3 +7,7 @@ data/
 .DS_Store
 models/*
 !models/.gitkeep
+!models/pd_current/
+models/pd_current/*
+!models/pd_current/meta.json
+!models/pd_current/lookup.json
