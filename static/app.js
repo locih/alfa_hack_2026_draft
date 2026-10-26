@@ -355,7 +355,7 @@ function feedCards(prof, prod, active) {
     cards.push(h`<article class="fcard pay ${mood}" data-key="${key}" style="--i:${cards.length}">
       <span class="fico" aria-hidden="true">${BELL}</span>
       <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
-      <div class="fbody"><div class="ftitle">${n < 0 ? "Платёж просрочен" : "Платёж"} ${rub(np.amount)} <span class="fwhen">· ${n < 0 ? whenText(n) : "до " + dateOnly(np.date) + ", " + whenText(n)}</span></div>
+      <div class="fbody"><small class="fcat">${n < 0 ? "Просрочка" : "Платёж по кредиту"}</small><div class="ftitle">${n < 0 ? "Платёж просрочен" : "Платёж"} ${rub(np.amount)} <span class="fwhen">· ${n < 0 ? whenText(n) : "до " + dateOnly(np.date) + ", " + whenText(n)}</span></div>
       <p class="ftext">${l.product_title} · платёж №${np.n} из ${l.total_count} · спишем с расчётного счёта.
         ${lack > 0 ? h`<b class="flack">На счёте ${rub(prof.account.balance)}, не хватает ${rub(lack)} — пополните счёт.</b>` : h`На счёте ${rub(prof.account.balance)} — хватает.`}</p>
       <div class="facts"><button class="btn primary" data-act="pay" data-app="${l.app_id}" ${lack > 0 ? "disabled" : ""}>Оплатить сейчас</button>
@@ -366,7 +366,7 @@ function feedCards(prof, prod, active) {
     const key = "act-" + active.id + "-" + active.status.code;
     cards.push(h`<article class="fcard need" data-key="${key}" style="--i:${cards.length}">
       <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
-      <div class="fbody"><div class="ftitle">Нужно ваше действие</div><p class="ftext">${active.status.title}: ${active.status.text}</p>
+      <div class="fbody"><small class="fcat">Заявка</small><div class="ftitle">Нужно ваше действие</div><p class="ftext">${active.status.title}: ${active.status.text}</p>
       <div class="facts"><a class="btn primary" href="#/client/app/${active.id}">Открыть заявку</a></div></div></article>`);
   }
   // 3. Лучшее предодобренное предложение (когда нет активной заявки)
@@ -376,13 +376,13 @@ function feedCards(prof, prod, active) {
     if (best && !feedHidden(key)) cards.push(h`<article class="fcard" data-key="${key}" style="--i:${cards.length}">
       <img class="fico img" src="img/products/${best.product}.webp" alt="" width="512" height="512" loading="lazy" decoding="async">
       <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
-      <div class="fbody"><div class="ftitle">Предодобрено до ${rub(best.max_amount)}</div>
+      <div class="fbody"><small class="fcat">Предодобрено</small><div class="ftitle">Предодобрено до ${rub(best.max_amount)}</div>
       <p class="ftext">${prod[best.product].title} · ставка от ${pct(best.rate_from)} · по оборотам, которые банк уже видит. Без справок и визита.</p>
       <div class="facts"><button class="btn primary" data-act="new-app" data-product="${best.product}">Оформить</button></div></div></article>`);
     const pref = prof.preapproval.find((p) => p.product === "preferential" && p.available && prod.preferential?.eligible);
     if (pref && best?.product !== "preferential" && !feedHidden("pref")) cards.push(h`<article class="fcard ok" data-key="pref" style="--i:${cards.length}">
       <button class="fx" data-act="feed-dismiss" data-key="pref" aria-label="Скрыть до завтра">×</button>
-      <div class="fbody"><div class="ftitle">Вам доступна льготная программа</div>
+      <div class="fbody"><small class="fcat">Господдержка</small><div class="ftitle">Вам доступна льготная программа</div>
       <p class="ftext">Компания в реестре МСП приоритетной отрасли: ставка от ${pct(pref.rate_from)} до ${rub(pref.max_amount)}.</p>
       <div class="facts"><button class="btn" data-act="new-app" data-product="preferential">Посмотреть условия</button></div></div></article>`);
   }
