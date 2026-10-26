@@ -540,7 +540,7 @@ a.tile > span:first-child { display: block; margin-bottom: 6px; } a.tile > span:
 .btn.violet { background: var(--violet); color: #fff; border-color: var(--violet); } .btn.violet:hover { background: var(--violet-hover); box-shadow: 0 8px 20px -8px rgba(106,77,255,.6); }
 .chip.violet { background: var(--violet-soft); color: var(--violet-ink); }
 .fcard.ok { background: var(--violet); color: #fff; } .fcard.ok .ftext { color: rgba(255,255,255,.82); } .fcard.ok .fx { background: rgba(255,255,255,.14); color: #fff; }
-.fcard.ok .btn { background: #fff; color: var(--violet-ink); }
+.fcard.ok .btn { background: #fff; color: var(--violet); font-weight: 700; }   /* текст кнопки цветом виджета */
 a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--violet-soft); border-color: transparent; }
 .pcard .chip.ok { background: var(--violet-soft); color: var(--violet-ink); }
 .prod .chip.ok { background: var(--violet-soft); color: var(--violet-ink); }
