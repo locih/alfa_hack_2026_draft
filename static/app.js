@@ -422,7 +422,7 @@ function forYouBlock(prof, prod, active) {
   const cards = [...notices, ...offers].slice(0, FEED_MAX);
   const tags = businessContext(prof, window.__client);
   const picked = pickNews(tags, Math.max(0, FEED_MAX - cards.length));
-  const news = picked.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i + cards.length, 6)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`);
+  const news = picked.map((n, i) => h`<a class="ncard ${toneAt(i + cards.length)}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i + cards.length, 6)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`);
   const why = [...tags].filter((t) => t !== "any" && t !== "retail").map((t) => ({ it: "ИТ", catering: "общепит", construction: "строительство", trade: "торговля", transport: "транспорт", production: "производство", other: "ваша отрасль", young: "молодой бизнес", loan: "действующий кредит", msp: "реестр МСП", gap: "риск кассового разрыва" }[t])).join(", ");
   return h`<section class="feed foryou mb" aria-label="Для вас"><div class="row between wrapx feed-head"><div><h2 style="margin:0">Для вас</h2><span class="muted small">подобрано по профилю: ${why} · ${cards.length + news.length} из ${FEED_MAX}</span></div>
       <div class="news-nav"><button class="btn sm" data-act="news-prev" aria-label="Назад">←</button><button class="btn sm" data-act="news-next" aria-label="Вперёд">→</button></div></div>
@@ -440,6 +440,10 @@ function glide(t, dx, ms = 800) {
   };
   t._glide = requestAnimationFrame(frame);
 }
+
+// цвета плиток ленты чередуются по позиции (палитра alfabank.ru), соседние никогда не совпадают
+const TONE_CYCLE = ["violet", "paper", "red", "lime", "blue"];
+const toneAt = (i) => TONE_CYCLE[((i % TONE_CYCLE.length) + TONE_CYCLE.length) % TONE_CYCLE.length];
 
 function initCarousels() {
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -574,7 +578,7 @@ const BANK_NEWS = [
 function newsBlock() {
   return h`<section class="news mb" aria-label="Новости и сервисы банка"><div class="row between wrapx"><div><h2 style="margin:0">Новости и сервисы банка</h2><span class="muted small">alfabank.ru и полезные ресурсы для бизнеса · ${BANK_NEWS.length} ссылок</span></div>
       <div class="news-nav"><button class="btn sm" data-act="news-prev" aria-label="Назад">←</button><button class="btn sm" data-act="news-next" aria-label="Вперёд">→</button></div></div>
-    <div class="news-track" data-news>${BANK_NEWS.map((n, i) => h`<a class="ncard ${n.tone}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i, 5)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`)}</div></section>`;
+    <div class="news-track" data-news>${BANK_NEWS.map((n, i) => h`<a class="ncard ${toneAt(i)}" href="${n.href}" target="_blank" rel="noopener" style="--i:${Math.min(i, 5)}"><small>${n.cat}${n.ext ? " · вне банка" : ""}</small><b>${n.title}</b><span>${n.text}</span><i class="go">Открыть →</i></a>`)}</div></section>`;
 }
 
 
@@ -992,7 +996,7 @@ function paintApp(a, silent = false) {
   }
   if (code === "AWAITING_SIGNATURE") {
     ctx = h`${ctx}<div class="card mt"><h2>Подписание</h2>
-      <div class="grid g3 mb">${[["договор", "Кредитный договор"], ["", "Согласие на обработку данных"], ["график платежей", "График платежей"]].map(([k, x]) => h`<div class="card flat small">📄 ${k ? T(k, x) : x}<br><span class="chip">готов</span></div>`)}</div>
+      <div class="grid g3 mb docs">${[["договор", "Кредитный договор"], ["", "Согласие на обработку данных"], ["график платежей", "График платежей"]].map(([k, x]) => h`<div class="card flat small">📄 ${k ? T(k, x) : x}<br><span class="chip">готов</span></div>`)}</div>
       <div class="notice mb"><b>Вы подписываете:</b> ${a.offer.payment == null ? h`${T("лимит", "лимит")} ${rub(a.offer.amount)}` : h`кредит ${rub(a.offer.amount)} на ${a.offer.term} мес.`}, ${T("ставка", "ставка")} ${pct(a.offer.rate)}${a.offer.payment ? h`, ${T("платёж", "платёж")} ${rub(a.offer.payment)} в месяц, ${T("переплата", "переплата")} ${rub(a.offer.overpayment)}` : ""}; ${T("обеспечение", "обеспечение")}: ${a.collateral_label.toLowerCase()}. ${T("досрочное погашение", "Досрочное погашение")} без штрафа. Наведите курсор на подчёркнутое слово, чтобы увидеть пояснение.</div>
       <p>Подтвердите подписание кодом — это ${T("простая электронная подпись", "простая электронная подпись")} (имитация): в реальной системе код приходил бы в приложение банка.</p>
       <div class="row wrapx"><div>Код (демо): <span class="code">${a.sign_code}</span></div></div>
@@ -1108,7 +1112,7 @@ async function viewBankApp(id, silent) {
   render(h`${raw(topbar())}<main class="wrap" id="bankview"><a href="#/bank" class="small">← Очередь</a>
     <div class="row between wrapx mt mb"><div><h1>${d.id} · ${d.client}</h1><div class="muted">${d.product_title} · ${rub(d.amount)} на ${d.term} мес. · ${d.status_view.title}</div></div>${chip(d.status, d.status_title)}</div>
     <div class="cols"><div>
-      <div class="card"><div class="row between wrapx"><h2>Скоринг и решение системы</h2>${dec.grade ? h`<span class="chip">версия карты ${dec.scorecard_version} · политика ${dec.policy_version}</span>` : ""}</div>
+      <div class="card"><div class="row between wrapx head-ver"><h2>Скоринг и решение системы</h2>${dec.grade ? h`<span class="chip">версия карты ${dec.scorecard_version} · политика ${dec.policy_version}</span>` : ""}</div>
         ${dec.stops?.length ? h`<div class="notice bad mb"><b>Сработали стоп-правила:</b> ${dec.stops.map((x) => x.id + " — " + x.text).join("; ")}. Скоринг не рассчитывался.</div>` : ""}
         ${dec.score != null ? h`<div class="row wrapx mb" style="gap:24px"><div><div class="scorebig" data-count="1">${dec.score}</div><div class="muted small">баллов из 100</div></div>
           <div><span class="grade ${dec.grade}" style="width:40px;height:40px;font-size:20px;border-radius:12px">${dec.grade}</span><div class="muted small">грейд · PD ≈ ${dec.pd} %</div></div>

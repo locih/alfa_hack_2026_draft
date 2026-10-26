@@ -29,6 +29,9 @@
   --black: #212124; --on-black: #fff; --accent-soft: #ffebeb; --ok: #0a9b40; --ok-soft: #dff8e5; --warn: #c96b00; --warn-soft: #ffefd9; --bad: #d72505; --bad-soft: #ffebeb; --info: #2c64d4; --info-soft: #e4f0ff; --violet-soft: #efecff; --violet-ink: #4a30c9;
   background: var(--card); color: var(--ink); }
 :root[data-theme="dark"] .prepay.island { padding: 16px 18px; border-radius: var(--radius-xs); margin-top: 16px; }
+:root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) { background: #fff; color: #0f0f10; }   /* белый остров: карточка ленты не сливается с тёмным фоном */
+:root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .ftext { color: rgba(0,0,0,.62); } :root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .fico.soft { background: #f0f0f2; color: #0f0f10; }
+:root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .fx { background: rgba(0,0,0,.06); color: #0f0f10; } :root[data-theme="dark"] .fcard:not(.ok):not(.need):not(.pay) .btn.link { color: rgba(0,0,0,.65); }
 :root[data-theme="dark"] .fcard.pay { background: #fff; color: #0f0f10; } :root[data-theme="dark"] .fcard.pay .ftext { color: rgba(0,0,0,.62); } :root[data-theme="dark"] .fcard.pay .flack { color: #0f0f10; }
 :root[data-theme="dark"] .fcard.pay .fx { background: rgba(0,0,0,.06); color: #0f0f10; } :root[data-theme="dark"] .fcard.pay .btn.link { color: rgba(0,0,0,.65); }
 :root[data-theme="dark"] .login-form form { background: var(--card); }
@@ -82,8 +85,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
 input[type=text], input[type=number], input[type=password], select, textarea {
   width: 100%; padding: 12px 14px; border: 1px solid transparent; border-radius: var(--radius-xs); background: var(--soft); color: var(--ink); font: inherit; transition: background 0.338s var(--ease), border-color 0.338s var(--ease), box-shadow 0.338s var(--ease); }
-input:hover, select:hover, textarea:hover { background: var(--line); }
-input:focus, select:focus, textarea:focus { background: var(--card); border-color: var(--info-fill); box-shadow: 0 0 0 3px var(--info-soft); outline: none; }
+select { -webkit-appearance: none; appearance: none; padding-right: 40px; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a8a90' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer; }
+select option { background: var(--card); color: var(--ink); }
+input:hover, select:hover, textarea:hover { background-color: var(--line); }
+input:focus, select:focus, textarea:focus { background-color: var(--card); border-color: var(--info-fill); box-shadow: 0 0 0 3px var(--info-soft); outline: none; }
 label { color: var(--muted); font-weight: 500; }
 textarea { min-height: 72px; resize: vertical; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
@@ -296,7 +301,7 @@ body.iss-open { overflow: hidden; }
 .calc-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
 .card.calc #quote { background: var(--card); border-radius: 20px; padding: 24px; }
 .card.calc #quote .big { font-size: 30px; }
-.card.calc select { background: var(--line); }
+.card.calc select { background-color: var(--line); }
 .card.calc .btn:not(.primary) { background: var(--card); }
 @media (max-width: 900px) { .task-grid { grid-template-columns: 1fr; } .card.calc { padding: 20px; } }
 
@@ -328,6 +333,7 @@ body.iss-open { overflow: hidden; }
 
 /* таблицы */
 table.t { width: 100%; border-collapse: collapse; }
+table.t th.right { text-align: right; } table.t th.center { text-align: center; }
 table.t th { text-align: left; font-size: 12.5px; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 table.t td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 table.t tr.click { cursor: pointer; } table.t tr.click:hover td { background: var(--soft); }
@@ -617,11 +623,13 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 .ncard { flex: 0 0 auto; width: 272px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 6px; min-height: 160px; padding: 18px 18px 16px; border-radius: var(--radius); color: #fff; text-decoration: none; position: relative; overflow: hidden; transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); animation: rise .9s var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms); }
 .ncard:hover { transform: translateY(-3px); text-decoration: none; box-shadow: 0 16px 30px -18px rgba(0,0,0,.5); }
 .ncard small { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; } .ncard b { font-size: 16px; line-height: 1.2; } .ncard span { font-size: 13px; opacity: .78; line-height: 1.4; } .ncard .go { margin-top: auto; font-style: normal; font-size: 13px; font-weight: 600; opacity: .9; }
-.ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #2f2fbf 0%, #0f1038 60%, #0b0b16 100%); }
-.ncard.graphite { background: radial-gradient(120% 120% at 100% 0%, #3a3a40 0%, #1a1a1d 60%, #111 100%); }
+.ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #3f82d0 0%, #275b9b 55%, #163a66 100%); }
+/* «бумага»: светлая плитка на тёмной теме, чёрная — на светлой (как чёрные блоки alfabank.ru) */
+.ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #ffffff 0%, #ebebeb 60%, #d6d6da 100%); color: #0f0f10; } .ncard.paper span { opacity: .72; }
+:root:not([data-theme="dark"]) .ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #3a3a40 0%, #1a1a1d 60%, #111 100%); color: #fff; } :root:not([data-theme="dark"]) .ncard.paper span { opacity: .78; }
 .ncard.red { background: radial-gradient(120% 120% at 100% 0%, #ff5a4a 0%, #b4140a 55%, #3a0a07 100%); }
-.ncard.mint { background: radial-gradient(120% 120% at 100% 0%, #7ff0d9 0%, #17c2b4 50%, #0a6f66 100%); color: #06211e; } .ncard.mint span { opacity: .85; }
-.ncard.violet { background: radial-gradient(120% 120% at 100% 0%, #9a85ff 0%, #6a4dff 55%, #2d1f8a 100%); }
+.ncard.lime { background: radial-gradient(120% 120% at 100% 0%, #d9ff6a 0%, #a9ee01 55%, #6f9e00 100%); color: #0f0f10; } .ncard.lime span { opacity: .78; } .ncard.lime small { opacity: .6; }
+.ncard.violet { background: radial-gradient(120% 120% at 100% 0%, #b56cff 0%, #9933ff 55%, #4a1a8f 100%); }
 @media (max-width: 600px) { .ncard { width: 240px; } }
 .r-zero { stroke: var(--bad); stroke-width: 1; stroke-dasharray: 2 3; opacity: .8; } .r-axis { fill: var(--chart-b); font-size: 10px; }
 
@@ -695,3 +703,8 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
   .chip { white-space: normal; height: auto; max-width: 100%; line-height: 1.3; } .card h2 { flex-wrap: wrap; }
 }
 @media (max-width: 900px) { .feed, .feed.foryou .feed-track { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; scroll-padding-left: 14px; } }   /* выпуск ленты = отступ .wrap */
+
+/* подписание: плитки документов — статус прижат к низу, у всех на одном уровне */
+.docs .card { display: flex; flex-direction: column; gap: 10px; } .docs .card .chip { margin-top: auto; align-self: flex-start; }
+/* заголовок карточки аналитика: версия карты не липнет к баллам */
+.head-ver { gap: 8px 12px; margin-bottom: 16px; } .head-ver h2 { margin: 0; }
