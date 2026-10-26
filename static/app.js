@@ -369,22 +369,22 @@ function feedCards(prof, prod, active) {
       <div class="fbody"><small class="fcat">Заявка</small><div class="ftitle">Нужно ваше действие</div><p class="ftext">${active.status.title}: ${active.status.text}</p>
       <div class="facts"><a class="btn primary" href="#/client/app/${active.id}">Открыть заявку</a></div></div></article>`);
   }
-  // 3. Лучшее предодобренное предложение (когда нет активной заявки)
-  if (!active) {
+  // 3. Лучшее предодобренное предложение — всегда (двигаем продукт); при активной заявке ведёт в раздел продуктов, т.к. вторая заявка не открывается
+  {
     const best = prof.preapproval.filter((p) => p.available && prod[p.product]?.eligible).sort((a, b) => b.max_amount - a.max_amount)[0];
     const key = best && `pre-${best.product}-${best.max_amount}`;
     if (best && !feedHidden(key)) cards.push(h`<article class="fcard" data-key="${key}" style="--i:${cards.length}">
       <img class="fico img" src="img/products/${best.product}.webp" alt="" width="512" height="512" loading="lazy" decoding="async">
       <button class="fx" data-act="feed-dismiss" data-key="${key}" aria-label="Скрыть до завтра">×</button>
       <div class="fbody"><small class="fcat">Предодобрено</small><div class="ftitle">Предодобрено до ${rub(best.max_amount)}</div>
-      <p class="ftext">${prod[best.product].title} · ставка от ${pct(best.rate_from)} · по оборотам, которые банк уже видит. Без справок и визита.</p>
-      <div class="facts"><button class="btn primary" data-act="new-app" data-product="${best.product}">Оформить</button></div></div></article>`);
+      <p class="ftext">${prod[best.product].title} · ставка от ${pct(best.rate_from)} · по оборотам, которые банк уже видит.${active ? " Доступно после завершения текущей заявки." : " Без справок и визита."}</p>
+      <div class="facts">${active ? h`<a class="btn primary" href="#/client/products">Смотреть продукты</a>` : h`<button class="btn primary" data-act="new-app" data-product="${best.product}">Оформить</button>`}</div></div></article>`);
     const pref = prof.preapproval.find((p) => p.product === "preferential" && p.available && prod.preferential?.eligible);
     if (pref && best?.product !== "preferential" && !feedHidden("pref")) cards.push(h`<article class="fcard ok" data-key="pref" style="--i:${cards.length}">
       <button class="fx" data-act="feed-dismiss" data-key="pref" aria-label="Скрыть до завтра">×</button>
       <div class="fbody"><small class="fcat">Господдержка</small><div class="ftitle">Вам доступна льготная программа</div>
       <p class="ftext">Компания в реестре МСП приоритетной отрасли: ставка от ${pct(pref.rate_from)} до ${rub(pref.max_amount)}.</p>
-      <div class="facts"><button class="btn" data-act="new-app" data-product="preferential">Посмотреть условия</button></div></div></article>`);
+      <div class="facts">${active ? h`<a class="btn" href="#/client/products">Посмотреть условия</a>` : h`<button class="btn" data-act="new-app" data-product="preferential">Посмотреть условия</button>`}</div></div></article>`);
   }
   return cards;
 }
@@ -393,7 +393,7 @@ function feedBlock(prof, prod, active) {
   return cards.length ? h`<section class="feed" aria-label="Для вас"><div class="feed-track">${cards}</div></section>` : "";
 }
 // единая лента «Для вас»: напоминания и предложения + новости и сервисы банка, автопрокрутка маятником
-const FEED_MAX = 4, FEED_OFFERS_MAX = 2;   // четыре плитки — четыре цвета, без повторов
+const FEED_MAX = 4, FEED_OWN_MAX = 2;   // четыре плитки: 2 свои (напоминание о платеже и предодобренное — всегда в приоритете) + 2 материала/продукта
 function industryOf(okved) {
   const code = parseInt(String(okved || "").slice(0, 2), 10);
   if (code === 62 || code === 63) return "it"; if (code === 56) return "catering"; if (code >= 41 && code <= 43) return "construction";
@@ -417,10 +417,9 @@ function pickNews(tags, n) {
 }
 function forYouBlock(prof, prod, active) {
   const all = feedCards(prof, prod, active);
-  // уведомления (платёж, действие) — всегда; предложений (предодобрено, льготная) — не больше двух
-  const isOffer = (card) => /class="fcard(?: ok)?" data-key="(pre-|pref)/.test(card.s);
-  const notices = all.filter((cd) => !isOffer(cd)), offers = all.filter(isOffer).slice(0, FEED_OFFERS_MAX);
-  const own = [...notices, ...offers].slice(0, FEED_MAX);
+  // приоритет своих карточек: платёж → предодобрено → действие по заявке → льготная; берём первые две
+  const rank = (cd) => { const k = /data-key="([a-z]+)/.exec(cd.s)?.[1]; return { pay: 0, pre: 1, act: 2, pref: 3 }[k] ?? 9; };
+  const own = all.map((cd, i) => [cd, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([cd]) => cd).slice(0, FEED_OWN_MAX);
   const tags = businessContext(prof, window.__client);
   const picked = pickNews(tags, Math.max(0, FEED_MAX - own.length));
   // цвет каждой плитки по позиции: срочный платёж всегда красный, остальные — свободные цвета без повторов и без соседей одного цвета
@@ -1246,8 +1245,8 @@ const act = {
     } catch (e) { toast(e.message, true); el.disabled = false; }
   },
   "accept": () => call("/accept", "Предложение принято"),
-  "decline-offer": (el) => askInline(el, "Отказаться от предложения? Заявка будет закрыта.", "Да, отказаться", () => call("/decline-offer", "Вы отказались от предложения")),
-  "withdraw": (el) => askInline(el, "Отозвать заявку? Данные сохранятся, можно будет подать новую.", "Да, отозвать", () => call("/withdraw", "Заявка отозвана")),
+  "decline-offer": (el) => askInline(el, "Отказаться от предложения? Заявка будет закрыта.", "Да, отказаться", () => call("/decline-offer", "Вы отказались от предложения", null, toHome)),
+  "withdraw": (el) => askInline(el, "Отозвать заявку? Данные сохранятся, можно будет подать новую.", "Да, отозвать", () => call("/withdraw", "Заявка отозвана", null, toHome)),
   "docs": () => call("/documents", "Выписка подключена, проверяем повторно", { note: $("#note")?.value }),
   "sign": () => call("/sign", "Договор подписан", { code: $("#code")?.value || "" }),
   "csv": () => {
@@ -1290,10 +1289,12 @@ function askInline(btn, text, yesLabel, onYes) {
   btn.replaceWith(box); yes.focus();
 }
 
-async function call(path, okMsg, body) {
+async function call(path, okMsg, body, after) {
   const id = window.__app.id;
-  try { await api(`/client/applications/${id}${path}`, { method: "POST", body: body || undefined }); toast(okMsg); lastSig = ""; await viewApp(id); } catch (e) { toast(e.message, true); }
+  try { await api(`/client/applications/${id}${path}`, { method: "POST", body: body || undefined }); toast(okMsg); lastSig = ""; if (after) after(); else await viewApp(id); } catch (e) { toast(e.message, true); }
 }
+// после отзыва заявки или отказа от предложения — на главную кабинета, а не на страницу закрытой заявки
+const toHome = () => { stopPoll(); clientTab = "overview"; location.hash = "#/client"; };
 
 // подсказки терминов не должны выходить за края окна: сдвигаем по горизонтали при наведении или фокусе
 function fitTip(e) {
