@@ -629,14 +629,14 @@ a.tile.violet b { color: var(--violet); } .tile.violet { background: var(--viole
 /* светлая тема: пастель как на alfabank.ru (голубой, сиреневый, мятный, розовый, серый), тёмный текст; тёмная тема — насыщенные */
 :root:not([data-theme="dark"]) .ncard { color: #0f0f10; }
 :root:not([data-theme="dark"]) .ncard small { opacity: .62; } :root:not([data-theme="dark"]) .ncard span { opacity: .75; }
-:root:not([data-theme="dark"]) .ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #d3f1ff 0%, #b3e4fb 60%, #9fd9f6 100%); }
-:root:not([data-theme="dark"]) .ncard.violet { background: radial-gradient(120% 120% at 100% 0%, #efe4ff 0%, #dfcbff 60%, #d2b9ff 100%); }
-:root:not([data-theme="dark"]) .ncard.red { background: radial-gradient(120% 120% at 100% 0%, #ffe6e3 0%, #ffd3cf 60%, #ffc2bc 100%); }
-:root:not([data-theme="dark"]) .ncard.lime { background: radial-gradient(120% 120% at 100% 0%, #e0fbe9 0%, #c7f3d8 60%, #b4ecc9 100%); }
-:root:not([data-theme="dark"]) .ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #f7f7f8 0%, #ececee 60%, #e2e2e5 100%); }
-:root:not([data-theme="dark"]) .fcard.ok { background: #e4d4ff; color: #0f0f10; } :root:not([data-theme="dark"]) .fcard.ok .ftext { color: rgba(0,0,0,.66); }
+:root:not([data-theme="dark"]) .ncard.blue { background: radial-gradient(120% 120% at 100% 0%, #c6ecff 0%, #9fdbfa 60%, #86cff5 100%); }
+:root:not([data-theme="dark"]) .ncard.violet { background: radial-gradient(120% 120% at 100% 0%, #e8d8ff 0%, #d2b8ff 60%, #c3a3ff 100%); }
+:root:not([data-theme="dark"]) .ncard.red { background: radial-gradient(120% 120% at 100% 0%, #ffdcd8 0%, #ffc3bd 60%, #ffaea6 100%); }
+:root:not([data-theme="dark"]) .ncard.lime { background: radial-gradient(120% 120% at 100% 0%, #d4f8e1 0%, #b4eecb 60%, #9ce6b9 100%); }
+:root:not([data-theme="dark"]) .ncard.paper { background: radial-gradient(120% 120% at 100% 0%, #f1f1f3 0%, #e3e3e7 60%, #d7d7dc 100%); }
+:root:not([data-theme="dark"]) .fcard.ok { background: #d8c2ff; color: #0f0f10; } :root:not([data-theme="dark"]) .fcard.ok .ftext { color: rgba(0,0,0,.66); }
 :root:not([data-theme="dark"]) .fcard.ok .btn { background: #0f0f10; color: #fff; border-color: #0f0f10; } :root:not([data-theme="dark"]) .fcard.ok .fx { background: rgba(0,0,0,.07); color: #0f0f10; }
-.ncard.red { background: #b5170d; }
+.ncard.red { background: #d8220f; }
 .ncard.lime { background: #a9ee01; color: #0f0f10; } .ncard.lime span { opacity: .78; } .ncard.lime small { opacity: .6; }
 .ncard.violet { background: #7a3ff2; }
 @media (max-width: 600px) { .ncard { width: 240px; } }
